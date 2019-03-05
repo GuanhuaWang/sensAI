@@ -30,10 +30,10 @@ Class 9
 Top X:  [(51, 641037.75)]
 Bottom X:  [(2, 14816.0556640625)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/1
 Ratio of bottom intersection to bottom total: 0/1
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 1/1
 Ratio of bottom intersection to bottom total: 0/1
 
@@ -70,10 +70,10 @@ Class 9
 Top X:  [(23, 175935.71875), (60, 144214.6875)]
 Bottom X:  [(14, 25283.87109375), (31, 34673.890625)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/2
 Ratio of bottom intersection to bottom total: 0/2
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 1/2
 Ratio of bottom intersection to bottom total: 0/2
 
@@ -110,10 +110,10 @@ Class 9
 Top X:  [(8, 34839.8125), (98, 31919.447265625), (122, 32784.19921875), (127, 31085.396484375)]
 Bottom X:  [(92, 3877.6689453125), (93, 3458.46484375), (95, 3593.74853515625), (115, 1068.3768310546875)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/4
 Ratio of bottom intersection to bottom total: 0/4
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 0/4
 Ratio of bottom intersection to bottom total: 1/4
 
@@ -150,10 +150,10 @@ Class 9
 Top X:  [(47, 18241.08984375), (51, 22478.654296875), (78, 19423.857421875), (82, 18376.921875)]
 Bottom X:  [(25, 3309.53662109375), (72, 3704.357421875), (108, 4003.85498046875), (126, 4239.3662109375)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/4
 Ratio of bottom intersection to bottom total: 0/4
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 0/4
 Ratio of bottom intersection to bottom total: 1/4
 
@@ -190,10 +190,10 @@ Class 9
 Top X:  [(25, 4316.4462890625), (48, 3709.103515625), (110, 3841.78271484375), (122, 4620.58154296875), (147, 5461.5380859375), (148, 4358.4580078125), (167, 3767.0888671875), (191, 3902.24658203125)]
 Bottom X:  [(83, 882.220458984375), (103, 584.372802734375), (156, 895.9825439453125), (166, 323.6936950683594), (185, 655.880615234375), (209, 820.1174926757812), (213, 820.9087524414062), (223, 614.47607421875)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/8
 Ratio of bottom intersection to bottom total: 0/8
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 0/8
 Ratio of bottom intersection to bottom total: 0/8
 
@@ -230,10 +230,10 @@ Class 9
 Top X:  [(20, 3697.28564453125), (41, 4194.36767578125), (48, 3696.994384765625), (50, 3613.0966796875), (86, 3706.76611328125), (89, 3805.470947265625), (90, 3490.623046875), (157, 4080.767333984375)]
 Bottom X:  [(46, 481.0414733886719), (49, 551.2689208984375), (65, 475.5645751953125), (104, 266.0079345703125), (152, 486.1421203613281), (182, 523.1436157226562), (210, 539.629638671875), (247, 340.55023193359375)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/8
 Ratio of bottom intersection to bottom total: 0/8
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 0/8
 Ratio of bottom intersection to bottom total: 0/8
 
@@ -270,10 +270,10 @@ Class 9
 Top X:  [(53, 5918.75341796875), (100, 5703.78515625), (166, 4510.072265625), (167, 4640.203125), (172, 9675.876953125), (199, 4758.5732421875), (211, 5832.3056640625), (249, 14191.09765625)]
 Bottom X:  [(43, 185.093994140625), (49, 153.853515625), (60, 133.0600128173828), (79, 220.4398651123047), (96, 220.9788818359375), (184, 198.1206512451172), (206, 57.66477966308594), (246, 251.31773376464844)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/8
 Ratio of bottom intersection to bottom total: 0/8
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 3/8
 Ratio of bottom intersection to bottom total: 0/8
 
@@ -310,10 +310,10 @@ Class 9
 Top X:  [(54, 5405.7412109375), (105, 4599.091796875), (134, 5233.5400390625), (143, 5123.43408203125), (155, 4560.50390625), (168, 4466.1630859375), (182, 5681.13916015625), (214, 5293.455078125)]
 Bottom X:  [(28, 163.669677734375), (60, 226.95852661132812), (99, 232.52923583984375), (110, 254.20098876953125), (128, 165.02639770507812), (135, 67.28472137451172), (165, 187.5972137451172), (199, 252.05526733398438)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/8
 Ratio of bottom intersection to bottom total: 0/8
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 0/8
 Ratio of bottom intersection to bottom total: 0/8
 
@@ -350,10 +350,10 @@ Class 9
 Top X:  [(46, 1502.8031005859375), (53, 1129.2291259765625), (62, 1182.5306396484375), (121, 1170.713623046875), (174, 1249.990234375), (198, 1778.665283203125), (215, 1469.552001953125), (281, 1084.791748046875), (288, 1445.7994384765625), (291, 1127.96826171875), (359, 1265.791259765625), (360, 1773.4931640625), (397, 1429.0712890625), (402, 1441.87353515625), (419, 2263.253662109375), (486, 1516.954833984375)]
 Bottom X:  [(1, 14.16063404083252), (28, 25.8990478515625), (45, 4.27977991104126), (140, 39.47129821777344), (173, 12.123260498046875), (176, 13.828392028808594), (216, 23.59209442138672), (259, 25.405147552490234), (292, 12.332296371459961), (296, 15.780573844909668), (298, 32.92041778564453), (364, 33.42232894897461), (382, 37.50849151611328), (400, 34.813758850097656), (434, 23.972402572631836), (438, 26.999296188354492)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/16
 Ratio of bottom intersection to bottom total: 0/16
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 0/16
 Ratio of bottom intersection to bottom total: 0/16
 
@@ -390,10 +390,10 @@ Class 9
 Top X:  [(116, 1011.6676025390625), (161, 625.59033203125), (176, 1555.369140625), (177, 683.83203125), (214, 622.5368041992188), (225, 632.301513671875), (230, 665.0907592773438), (232, 643.3624267578125), (267, 651.4039306640625), (332, 682.49267578125), (344, 533.9596557617188), (496, 565.7589111328125), (509, 770.6292724609375)]
 Bottom X:  [(4, 0.4634822607040405), (100, 0.05409524589776993), (152, 1.3627674579620361), (188, 1.124145269393921), (280, 1.6420135498046875), (310, 0.5531083941459656), (313, 2.1473727226257324), (336, 0.16558347642421722), (387, 1.6369900703430176), (410, 0.06113489344716072), (432, 0.8012527227401733), (461, 1.837847352027893), (508, 1.0888454914093018)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/13
 Ratio of bottom intersection to bottom total: 0/13
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 3/13
 Ratio of bottom intersection to bottom total: 5/13
 
@@ -430,10 +430,10 @@ Class 9
 Top X:  [(55, 335.4311828613281), (112, 368.09686279296875), (171, 476.37933349609375), (178, 444.82073974609375), (196, 334.91668701171875), (211, 651.5211181640625), (250, 486.02301025390625), (311, 384.913818359375), (342, 396.19378662109375), (369, 316.20947265625), (379, 373.35321044921875), (416, 342.95733642578125), (511, 511.39849853515625)]
 Bottom X:  [(21, 0.6034903526306152), (76, 3.467829465866089), (93, 2.259714126586914), (102, 0.7227768898010254), (115, 2.634721040725708), (126, 2.162231206893921), (153, 1.9971294403076172), (222, 0.6694068908691406), (300, 2.102186679840088), (315, 2.0292129516601562), (336, 2.1407716274261475), (439, 2.7063405513763428), (464, 3.9060425758361816)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/13
 Ratio of bottom intersection to bottom total: 0/13
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 2/13
 Ratio of bottom intersection to bottom total: 11/13
 
@@ -470,10 +470,10 @@ Class 9
 Top X:  [(36, 336.3087158203125), (236, 337.1593017578125), (294, 333.1605224609375), (298, 337.16876220703125), (343, 314.1667175292969), (404, 338.6420593261719), (412, 317.0757141113281), (434, 501.5318603515625), (470, 332.78289794921875)]
 Bottom X:  [(11, 4.068526777700754e-06), (64, 0.00037751809577457607), (122, 5.077636888017878e-05), (124, 1.6701946151442826e-05), (143, 7.656723028048873e-06), (194, 0.0006502789910882711), (288, 0.00018367072334513068), (350, 3.321160329505801e-05), (503, 5.223828907219286e-07)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/9
 Ratio of bottom intersection to bottom total: 0/9
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 0/9
 Ratio of bottom intersection to bottom total: 8/9
 
@@ -510,10 +510,10 @@ Class 9
 Top X:  [(25, 217.6673126220703), (118, 267.90283203125), (149, 238.64866638183594), (156, 269.6802673339844), (160, 353.76348876953125), (306, 302.8423156738281), (319, 236.82339477539062), (371, 410.65582275390625), (408, 261.4189453125)]
 Bottom X:  [(51, 0.0007473603473044932), (53, 0.00025749392807483673), (123, 0.001401850488036871), (187, 0.0015731018502265215), (262, 0.0016919702757149935), (289, 0.000205784454010427), (389, 0.0009271153248846531), (424, 0.00039778236532583833), (469, 0.0017718980088829994)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/9
 Ratio of bottom intersection to bottom total: 0/9
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 2/9
 Ratio of bottom intersection to bottom total: 8/9
 
@@ -550,10 +550,10 @@ Class 9
 Top X:  [(45, 460.9993591308594), (84, 271.68341064453125), (87, 291.27471923828125), (115, 323.21826171875), (128, 772.951904296875), (167, 341.8231506347656), (185, 271.6324157714844), (204, 361.819091796875), (229, 554.1420288085938), (267, 307.9272766113281), (288, 406.9995422363281), (298, 281.9368896484375), (324, 549.3223266601562), (343, 271.72686767578125), (421, 365.5762939453125), (458, 343.67962646484375)]
 Bottom X:  [(20, 0.17981740832328796), (64, 0.2782948613166809), (102, 0.1846010684967041), (121, 0.15672752261161804), (181, 0.00330297090113163), (186, 0.3399680256843567), (276, 0.14613646268844604), (302, 0.0012489503715187311), (330, 0.2887198328971863), (354, 0.3512935936450958), (384, 0.22003695368766785), (473, 0.4356030821800232), (475, 0.09980647265911102), (503, 0.10287747532129288), (508, 0.21423736214637756), (511, 0.4061102271080017)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/16
 Ratio of bottom intersection to bottom total: 0/16
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 3/16
 Ratio of bottom intersection to bottom total: 5/16
 
@@ -590,10 +590,10 @@ Class 9
 Top X:  [(83, 259.53564453125), (119, 312.58935546875), (125, 257.7945556640625), (137, 255.23118591308594), (158, 371.8146057128906), (181, 278.83709716796875), (190, 264.3977355957031), (253, 297.4776611328125), (265, 300.9314880371094), (372, 294.42266845703125), (418, 258.36358642578125), (444, 272.6424255371094), (477, 340.49176025390625), (478, 360.99920654296875), (484, 258.6250915527344), (509, 307.88690185546875)]
 Bottom X:  [(4, 0.43414443731307983), (18, 0.5148032903671265), (30, 0.06685509532690048), (44, 0.14903420209884644), (52, 0.5464001893997192), (77, 0.18271905183792114), (78, 0.3305138349533081), (160, 0.10546949505805969), (195, 0.0735619068145752), (264, 0.5175650119781494), (342, 0.0004098517820239067), (368, 0.27148669958114624), (383, 0.32745060324668884), (416, 0.40122556686401367), (445, 0.008155476301908493), (468, 0.03895936906337738)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/16
 Ratio of bottom intersection to bottom total: 0/16
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 0/16
 Ratio of bottom intersection to bottom total: 8/16
 
@@ -630,10 +630,10 @@ Class 9
 Top X:  [(114, 1309.6328125), (167, 1335.23193359375), (237, 1358.7152099609375), (271, 1441.4410400390625), (330, 2199.080810546875), (351, 1375.2012939453125), (379, 1652.24267578125), (389, 1609.50244140625), (417, 1283.366943359375), (420, 1669.634765625), (471, 1443.341552734375)]
 Bottom X:  [(54, 0.7577875852584839), (55, 0.37536439299583435), (72, 0.6241574287414551), (74, 0.9133201241493225), (145, 0.878524661064148), (165, 0.5548681020736694), (217, 0.6554315090179443), (295, 0.5909439325332642), (381, 0.44868212938308716), (447, 0.7166376113891602), (490, 0.901785671710968)]
 
-Shared activation values
+Completely shared activation values (among all classes)
 Ratio of top intersection to top total: 0/11
 Ratio of bottom intersection to bottom total: 0/11
-Shared filter indices
+Completely shared filter indices (among all classes)
 Ratio of top intersection to top total: 0/11
 Ratio of bottom intersection to bottom total: 0/11
 
