@@ -70,6 +70,3 @@ if __name__ == '__main__':
         print("")
         print("")
 
-        # TODO: Perform pairwise intersection, maybe it'll be useful to know which activations are shared between which classes
-        # Perhaps if we can't achieve complete k way split on a k way classifier,
-        # A partial split might be possible?
