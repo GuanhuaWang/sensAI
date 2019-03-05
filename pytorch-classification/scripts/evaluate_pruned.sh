@@ -1,0 +1,1 @@
+python3 evaluate.py -a vgg19_bn --resume ~/zihao/rona_experiments/rona/vgg-pruning/pruned_models/vgg19_bn/vgg19_bn_0_pruned_model.pth --evaluate --binary --pruned

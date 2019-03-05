@@ -114,7 +114,7 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
 parser.add_argument('--gpu-id', default='0', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
 parser.add_argument('--binary', action='store_true', help='whether to use binary testing')
-
+parser.add_argument('--pruned', action='store_true', help='Indicate loading a pruned model or not')
 parser.add_argument('--class-index', default=0, type=int,
                     help='class index for class specific activation')
 
@@ -244,15 +244,23 @@ def main():
             model_list = []
             args.checkpoint = os.path.dirname(args.resume)
 
-            for i in range(10):
-                model = models.__dict__[args.arch](num_classes=num_classes)
-                model = torch.nn.DataParallel(model).cuda() 
+            if args.pruned:
+                for i in range(10):
+                    pruned_model_name = args.arch + '_{}'.format(i) + '_pruned_model.pth'
+                    model_path = os.path.join(args.checkpoint, pruned_model_name)
+                    model = torch.load(model_path)
+                    model = torch.nn.DataParallel(model).cuda()
+                    model_list.append(model)
+            else:
+                for i in range(10):
+                    model = models.__dict__[args.arch](num_classes=num_classes)
+                    model = torch.nn.DataParallel(model).cuda() 
 
-                folder = args.checkpoint + '_{}'.format(i)
-                print(folder)
-                checkpoint = torch.load(os.path.join(folder, 'checkpoint.pth.tar'))
-                model.load_state_dict(checkpoint['state_dict'])
-                model_list.append(model)
+                    folder = args.checkpoint + '_{}'.format(i)
+                    print(folder)
+                    checkpoint = torch.load(os.path.join(folder, 'checkpoint.pth.tar'))
+                    model.load_state_dict(checkpoint['state_dict'])
+                    model_list.append(model)
             test_acc = test_list(testloader, model_list, criterion, start_epoch, use_cuda)
 
             # pdb.set_trace()
