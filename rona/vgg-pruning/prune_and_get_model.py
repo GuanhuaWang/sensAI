@@ -18,7 +18,7 @@ parser.add_argument('-r', '--resume', default='', type=str, help='The path to th
 parser.add_argument('-s', '--save', default='./pruned_models', type=str, help='The path to store the pruned models')
 args = parser.parse_args()
 
-num_classes = 2
+num_classes = 10
 
 def update_list(l):
     for i in range(len(l)):
@@ -41,7 +41,7 @@ def main():
         model = torch.nn.DataParallel(model).cuda()
 
         # load checkpoints
-        checkpoint = torch.load(os.path.join(args.resume, args.arch + '_{}'.format(i), 'checkpoint.pth.tar'))
+        checkpoint = torch.load(os.path.join(args.resume, args.arch, 'checkpoint.pth.tar'))
         model.load_state_dict(checkpoint['state_dict'])
 
         model = model.module

@@ -28,7 +28,7 @@ from torch.utils.data import Dataset, DataLoader
 class MyTrainDataset(Dataset):
     def __init__(self):
         self.cifar10 = datasets.CIFAR10(root='./data',
-                                        download=False,
+                                        download=True,
                                         train=True,
                                         transform=transforms.Compose([
         transforms.RandomCrop(32, padding=4),
@@ -81,7 +81,7 @@ parser.add_argument('--epochs', default=300, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('--train-batch', default=1000, type=int, metavar='N',
+parser.add_argument('--train-batch', default=64, type=int, metavar='N',
                     help='train batchsize')
 parser.add_argument('--test-batch', default=1000, type=int, metavar='N',
                     help='test batchsize')
@@ -453,9 +453,14 @@ def test_list(testloader, model_list, criterion, epoch, use_cuda):
         # compute output
         # outputs = torch.autograd.Variable(torch.Tensor(input.size(0), 10))
         output_list = []
-        for model in model_list:
-            output_current = model(inputs)[:, 0].unsqueeze(1)
-            output_list.append(output_current)
+        if args.pruned:
+            for model_idx, model in enumerate(model_list):
+                output_current = model(inputs)[:, model_idx].unsqueeze(1)
+                output_list.append(output_current)
+        else:
+            for model in model_list:
+                output_current = model(inputs)[:, 0].unsqueeze(1)
+                output_list.append(output_current)
         outputs = torch.cat(output_list, 1)
         # pdb.set_trace()
 
