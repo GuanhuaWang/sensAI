@@ -20,44 +20,52 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import models.cifar as models
 import pdb
-import pickle
-import dataset
-import numpy as np
-
 
 from utils import Bar, Logger, AverageMeter, accuracy, mkdir_p, savefig
+from torch.utils.data import Dataset, DataLoader
 
 
-activations = []
-sizes = []
-def parse_activation(feature_map):
-    n, c, h, w = list(feature_map.size())
-    nch = torch.sum(feature_map, dim=2)
-    nc = torch.sum(nch, dim=2)
-    c = torch.sum(nc, dim=0)
-    #print(c.size())
-    return np.array([float(c_i) for c_i in c])
+class MyTrainDataset(Dataset):
+    def __init__(self):
+        self.cifar10 = datasets.CIFAR10(root='./data',
+                                        download=True,
+                                        train=True,
+                                        transform=transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+    ]))
 
+    def __getitem__(self, index):
+        data, target = self.cifar10[index]
 
-def hook_norm(self, input, output):
-    # input is a tuple of packed inputs
-    # output is a Tensor. output.data is the Tensor we are interested
-    #global activations
-    if self.__class__.__name__ == 'ReLU':
-#       print(self)
- #      torch.set_printoptions(threshold=500000)
- #      print('input size:', input[0].size())
- #      print('output size:', output.data.size())
- #      print('output norm:', output.data.norm())
-       print(output.data)
- #      sizes.append(output.data.size())
-       activations.append(parse_activation(output.data))
+        # Your transformations here (or set it in CIFAR10)
 
+        return data, target, index
 
-                     
-def apply_hook(m):
-   # print(m)
-   m.register_forward_hook(hook_norm)
+    def __len__(self):
+        return len(self.cifar10)
+
+class MyTestDataset(Dataset):
+    def __init__(self):
+        self.cifar10 = datasets.CIFAR10(root='./data',
+                                        download=False,
+                                        train=False,
+                                        transform=transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+    ]))
+        
+    def __getitem__(self, index):
+        data, target = self.cifar10[index]
+        
+        # Your transformations here (or set it in CIFAR10)
+        
+        return data, target, index
+
+    def __len__(self):
+        return len(self.cifar10)
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -73,9 +81,9 @@ parser.add_argument('--epochs', default=300, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('--train-batch', default=128, type=int, metavar='N',
+parser.add_argument('--train-batch', default=64, type=int, metavar='N',
                     help='train batchsize')
-parser.add_argument('--test-batch', default=100, type=int, metavar='N',
+parser.add_argument('--test-batch', default=1000, type=int, metavar='N',
                     help='test batchsize')
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate')
@@ -113,12 +121,8 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
 #Device options
 parser.add_argument('--gpu-id', default='0', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
+parser.add_argument('--pruned', action='store_true', help='whether testing pruned models')
 parser.add_argument('--binary', action='store_true', help='whether to use binary testing')
-
-parser.add_argument('--class-index', default=0, type=int,
-                    help='class index for class specific activation')
-
-
 
 args = parser.parse_args()
 state = {k: v for k, v in args._get_kwargs()}
@@ -139,6 +143,8 @@ if use_cuda:
     torch.cuda.manual_seed_all(args.manualSeed)
 
 best_acc = 0  # best test accuracy
+
+torch.set_printoptions(threshold=10000)
 
 def main():
     global best_acc
@@ -173,12 +179,11 @@ def main():
         num_classes = 2
 
 
-    # trainset = dataloader(root='./data', train=True, download=True, transform=transform_train)
-    # trainloader = data.DataLoader(trainset, batch_size=args.train_batch, shuffle=True, num_workers=args.workers)
+    trainset = MyTrainDataset()#dataloader(root='./data', train=True, download=True, transform=transform_train)
+    trainloader = data.DataLoader(trainset, batch_size=args.train_batch, shuffle=True, num_workers=args.workers)
 
-    #testset = dataloader(root='./data', train=False, download=False, transform=transform_test)
-    #testloader = data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.workers)
-    testloader = dataset.test_loader(args.class_index, batch_size=1000)
+    testset = MyTestDataset() #dataloader(root='./data', train=False, download=False, transform=transform_test)
+    testloader = data.DataLoader(testset, batch_size=args.test_batch, shuffle=False, num_workers=args.workers)
 
     # Model
     print("==> creating model '{}'".format(args.arch))
@@ -244,15 +249,23 @@ def main():
             model_list = []
             args.checkpoint = os.path.dirname(args.resume)
 
-            for i in range(10):
-                model = models.__dict__[args.arch](num_classes=num_classes)
-                model = torch.nn.DataParallel(model).cuda() 
+            if args.pruned:
+                for i in range(10):
+                    pruned_model_name = args.arch + '_{}'.format(i) + '_pruned_model.pth'
+                    model_path = os.path.join(args.checkpoint, pruned_model_name)
+                    model = torch.load(model_path)
+                    model = torch.nn.DataParallel(model).cuda()
+                    model_list.append(model)
+            else:
+                for i in range(10):
+                    model = models.__dict__[args.arch](num_classes=num_classes)
+                    model = torch.nn.DataParallel(model).cuda() 
 
-                folder = args.checkpoint + '_{}'.format(i)
-                print(folder)
-                checkpoint = torch.load(os.path.join(folder, 'checkpoint.pth.tar'))
-                model.load_state_dict(checkpoint['state_dict'])
-                model_list.append(model)
+                    folder = args.checkpoint + '_{}'.format(i)
+                    print(folder)
+                    checkpoint = torch.load(os.path.join(folder, 'checkpoint.pth.tar'))
+                    model.load_state_dict(checkpoint['state_dict'])
+                    model_list.append(model)
             test_acc = test_list(testloader, model_list, criterion, start_epoch, use_cuda)
 
             # pdb.set_trace()
@@ -265,7 +278,7 @@ def main():
         return
 
     # Train and val
-    for epoch in range(start_epoch, args.epochs):
+    for epoch in range(start_epoch, start_epoch+1): #args.epochs):
         adjust_learning_rate(optimizer, epoch)
 
         print('\nEpoch: [%d | %d] LR: %f' % (epoch + 1, args.epochs, state['lr']))
@@ -297,7 +310,8 @@ def main():
 def train(trainloader, model, criterion, optimizer, epoch, use_cuda):
     # switch to train mode
     model.train()
-
+    # guanhua
+    print('===TRAIN===')
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -305,8 +319,8 @@ def train(trainloader, model, criterion, optimizer, epoch, use_cuda):
     top5 = AverageMeter()
     end = time.time()
 
-    bar = Bar('Processing', max=len(trainloader))
-    for batch_idx, (inputs, targets) in enumerate(trainloader):
+#    bar = Bar('Processing', max=len(trainloader))
+    for batch_idx, (inputs, targets, idx) in enumerate(trainloader):
         # measure data loading time
         data_time.update(time.time() - end)
 
@@ -314,8 +328,10 @@ def train(trainloader, model, criterion, optimizer, epoch, use_cuda):
             inputs, targets = inputs.cuda(), targets.cuda(async=True)
         inputs, targets = torch.autograd.Variable(inputs), torch.autograd.Variable(targets)
 
+        print('Batch idx {}, dataset index {}'.format(batch_idx, idx))
         # compute output
         outputs = model(inputs)
+        print('outputs {}'.format(outputs))
         loss = criterion(outputs, targets)
 
         # measure accuracy and record loss
@@ -334,19 +350,19 @@ def train(trainloader, model, criterion, optimizer, epoch, use_cuda):
         end = time.time()
 
         # plot progress
-        bar.suffix  = '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f} | top5: {top5: .4f}'.format(
-                    batch=batch_idx + 1,
-                    size=len(trainloader),
-                    data=data_time.avg,
-                    bt=batch_time.avg,
-                    total=bar.elapsed_td,
-                    eta=bar.eta_td,
-                    loss=losses.avg,
-                    top1=top1.avg,
-                    top5=top5.avg,
-                    )
-        bar.next()
-    bar.finish()
+ #       bar.suffix  = '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f} | top5: {top5: .4f}'.format(
+  #                  batch=batch_idx + 1,
+   #                 size=len(trainloader),
+    #                data=data_time.avg,
+     #               bt=batch_time.avg,
+      #              total=bar.elapsed_td,
+       #             eta=bar.eta_td,
+        #            loss=losses.avg,
+         #           top1=top1.avg,
+          #          top5=top5.avg,
+           #         )
+#        bar.next()
+#    bar.finish()
     return (losses.avg, top1.avg)
 
 def test(testloader, model, criterion, epoch, use_cuda):
@@ -360,19 +376,28 @@ def test(testloader, model, criterion, epoch, use_cuda):
 
     # switch to evaluate mode
     model.eval()
- 
-    model.apply(apply_hook)
+
+    # guanhua
+    print('===EVAL===')
+
     end = time.time()
-    bar = Bar('Processing', max=len(testloader))
-    for batch_idx, (inputs, targets) in enumerate(testloader):
+#    bar = Bar('Processing', max=len(testloader))
+    for batch_idx, (inputs, targets, idx) in enumerate(testloader):
         # measure data loading time
         data_time.update(time.time() - end)
+
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = torch.autograd.Variable(inputs, volatile=True), torch.autograd.Variable(targets)
 
+        print('Batch idx {}, dataset index {}'.format(batch_idx, idx))
+        #print(inputs.size())
+        #print(targets.size())
         # compute output
         outputs = model(inputs)
+		# guanhua output
+        print('outputs {}'.format(outputs))
+
         loss = criterion(outputs, targets)
 
         # measure accuracy and record loss
@@ -385,18 +410,20 @@ def test(testloader, model, criterion, epoch, use_cuda):
         batch_time.update(time.time() - end)
         end = time.time()
 
-    print("Number of activation layers: ", len(activations))
-    print("Sizes of each activation output layer: ")
-    # print(sizes)	
-    # layers_channels = parse_activations(activations)
-    # print(type(activations))
-    # print(type(activations[0]))
-    np_activations =  np.array(activations)
-    print("verify layer shape: ", np_activations.shape)
-    print("verify channel shapes: ", [c.shape for c in np_activations])
-    np.save(open("lc_logs/class_{}_lc.npy".format(args.class_index), "wb"), np_activations)
-    #pickle.dump(activations, open("lc_logs/class_{}_lc.dump".format(args.class_index), "wb"))
-
+        # plot progress
+#        bar.suffix  = '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f} | top5: {top5: .4f}'.format(
+ #                   batch=batch_idx + 1,
+  #                  size=len(testloader),
+   #                 data=data_time.avg,
+    #                bt=batch_time.avg,
+     #               total=bar.elapsed_td,
+      #              eta=bar.eta_td,
+       #             loss=losses.avg,
+        #            top1=top1.avg,
+         #           top5=top5.avg,
+          #          )
+#        bar.next()
+#    bar.finish()
     return (losses.avg, top1.avg)
 
 def test_list(testloader, model_list, criterion, epoch, use_cuda):
@@ -415,10 +442,10 @@ def test_list(testloader, model_list, criterion, epoch, use_cuda):
 
     end = time.time()
     bar = Bar('Processing', max=len(testloader))
-    for batch_idx, (inputs, targets) in enumerate(testloader):
+    for batch_idx, (inputs, targets, idx) in enumerate(testloader):
         # measure data loading time
         data_time.update(time.time() - end)
-        
+
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = torch.autograd.Variable(inputs, volatile=True), torch.autograd.Variable(targets)
@@ -426,13 +453,16 @@ def test_list(testloader, model_list, criterion, epoch, use_cuda):
         # compute output
         # outputs = torch.autograd.Variable(torch.Tensor(input.size(0), 10))
         output_list = []
-        for model in model_list:
-            output_current = model(inputs)[:, 0].unsqueeze(1)
-            output_list.append(output_current)
+        if args.pruned:
+            for model_idx, model in enumerate(model_list):
+                output_current = model(inputs)[:, model_idx].unsqueeze(1)
+                output_list.append(output_current)
+        else:
+            for model in model_list:
+                output_current = model(inputs)[:, 0].unsqueeze(1)
+                output_list.append(output_current)
         outputs = torch.cat(output_list, 1)
-
         # pdb.set_trace()
-            # loss = criterion(outputs, targets)
 
         # measure accuracy and record loss
         prec1, prec5 = accuracy(outputs.data, targets.data, topk=(1, 5))

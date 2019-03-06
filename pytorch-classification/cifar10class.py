@@ -17,6 +17,11 @@ transform_with_aug = transforms.Compose([TPIL, RC, RHF, TT, NRM])
 # Transforms object for testset with NO augmentation
 transform_no_aug   = transforms.Compose([TT, NRM])
 
+# Representative images index
+repre_idx = np.loadtxt('bottom500.txt')
+print(repre_idx.shape)
+repre_top_idx = np.loadtxt('top500.txt')
+print(repre_top_idx.shape)
 # Downloading/Louding CIFAR10 data
 trainset  = CIFAR10(root='./data', train=True , download=True)#, transform = transform_with_aug)
 testset   = CIFAR10(root='./data', train=False, download=True)#, transform = transform_no_aug)
@@ -44,13 +49,46 @@ def get_class_i(x, y, i):
     # Convert the result into a 1-D list
     pos_i = list(pos_i[:,0])
     # Collect all data that match the desired label
+#    print(pos_i)
     x_i = [x[j] for j in pos_i]
     # Debug info
 #    print("x_i ", x_i)
-    print("Class picked, ", i)
-    print("Label picked: ", y[pos_i][0])
     return x_i
 
+def get_represent_class_i(x, y, i):
+    pos_i = [int(x) for x in repre_idx[i,:]]
+    pos_i = list(pos_i)
+#    print(pos_i)
+    x_i = [x[j] for j in pos_i]
+    x_i = x_i*10
+    return x_i
+
+def get_represent_top_class_i(x, y, i):
+    pos_i = [int(x) for x in repre_top_idx[i,:]]
+    pos_i = list(pos_i)
+#    print(pos_i)
+    x_i = [x[j] for j in pos_i]
+    x_i = x_i*10
+    return x_i
+
+def get_represent_neg_class_i(x, y, i):
+    whole = repre_top_idx.ravel()
+    pos_i = [int(x) for x in whole if x not in repre_top_idx[i,:]]
+    x_i1 = [x[j] for j in pos_i]
+    print(len(x_i1))
+
+    #add another 500 random images
+    y = np.array(y)
+    cla_i = np.argwhere(y==i)
+    whole_y = np.arange(y.size)
+    np.random.shuffle(whole_y)
+    x_i2 = [x[j] for j in whole_y if j not in cla_i[:,0]]
+    x_i2_500 = x_i2[:500]
+
+    x_i = x_i1+x_i2_500
+    print(len(x_i))
+
+    return x_i
 
 # Get random images excluding images in the target class i
 def get_random_images(x, y, i):
@@ -73,25 +111,6 @@ def get_random_images(x, y, i):
     x_r_i = x_i[:pos_i.size]
 #    print("random_x_i size ", x_r_i)
     return x_r_i
-
-class i_DatasetMaker(Dataset):
-    def __init__(self, datasets, class_index, transformFunc = transform_no_aug):
-        """
-        datasets: a list of get_class_i outputs, i.e. a list of list of images for selected classes
-        """
-        self.datasets = datasets
-        self.class_index = class_index
-        self.lengths  = [len(d) for d in self.datasets]
-        self.transformFunc = transformFunc
-
-    def __getitem__(self, i):
-        img = self.datasets[0][i]
-        img = self.transformFunc(img)
-        return img, self.class_index
-
-    def __len__(self):
-        return sum(self.lengths)
-
 
 class DatasetMaker(Dataset):
     def __init__(self, datasets, transformFunc = transform_no_aug):
@@ -133,7 +152,7 @@ class DatasetMaker(Dataset):
 # Let's choose cats (class 3 of CIFAR) and dogs (class 5 of CIFAR) as trainset/testset
 cat_dog_trainset = \
     DatasetMaker(
-        [get_class_i(x_train, y_train, classDict['cat']), get_random_images(x_train, y_train, classDict['cat'])],
+        [get_represent_neg_class_i(x_train, y_train, classDict['cat']), get_random_images(x_train, y_train, classDict['cat'])],
         transform_with_aug
     )
 cat_dog_testset  = \
@@ -148,4 +167,3 @@ kwargs = {'num_workers': 2, 'pin_memory': False}
 if __name__ == '__main__':
     trainsetLoader   = DataLoader(cat_dog_trainset, batch_size=64, shuffle=True , **kwargs)
     testsetLoader    = DataLoader(cat_dog_testset , batch_size=64, shuffle=False, **kwargs)
-    
