@@ -10,7 +10,7 @@ def replace_layers(model, i, indexes, layers):
         return layers[indexes.index(i)]
     return model[i]
 
-def prune_vgg16_conv_layer(model, layer_index, filter_index, batch_norm=False):
+def prune_vgg16_conv_layer(model, layer_index, filter_index, use_batch_norm=False):
     _, conv = list(model.features._modules.items())[layer_index]
     next_conv = None
     offset = 1
@@ -46,6 +46,42 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index, batch_norm=False):
     bias[filter_index : ] = bias_numpy[filter_index + 1 :]
     new_conv.bias.data = torch.from_numpy(bias).cuda()
 
+    # print(np.sum(old_weights, axis=(1, 2, 3)), np.sum(new_weights, axis=(1, 2, 3)))
+
+    if use_batch_norm:
+        _, bn = list(model.features._modules.items())[layer_index + 1]
+        new_bn = torch.nn.BatchNorm2d(conv.out_channels - 1)
+
+        old_weights = bn.weight.data.cpu().numpy()
+        new_weights = new_bn.weight.data.cpu().numpy()
+        new_weights[:filter_index] = old_weights[:filter_index]
+        new_weights[filter_index:] = old_weights[filter_index+1:]
+        
+
+        old_bias = bn.bias.data.cpu().numpy()
+        new_bias = new_bn.bias.data.cpu().numpy()
+        new_bias[:filter_index] = old_bias[:filter_index]
+        new_bias[filter_index:] = old_bias[filter_index+1:]
+
+        
+
+        old_running_mean = bn.running_mean.data.cpu().numpy()
+        new_running_mean = new_bn.running_mean.data.cpu().numpy()
+        new_running_mean[:filter_index] = old_running_mean[:filter_index]
+        new_running_mean[filter_index:] = old_running_mean[filter_index+1:]
+
+
+        old_running_var = bn.running_var.data.cpu().numpy()
+        new_running_var = new_bn.running_var.data.cpu().numpy()
+        new_running_var[:filter_index] = old_running_var[:filter_index]
+        new_running_var[filter_index:] = old_running_var[filter_index+1:]
+
+        new_bn.weight.data = torch.from_numpy(new_weights).cuda()
+        new_bn.bias.data = torch.from_numpy(new_bias).cuda()
+        new_bn.running_mean.data = torch.from_numpy(new_running_mean).cuda()
+        new_bn.running_var.data = torch.from_numpy(new_running_var).cuda()
+        
+
     if not next_conv is None:
         next_new_conv = \
             torch.nn.Conv2d(in_channels = next_conv.in_channels - 1,\
@@ -64,12 +100,12 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index, batch_norm=False):
         new_weights[:, filter_index : , :, :] = old_weights[:, filter_index + 1 :, :, :]
         next_new_conv.weight.data = torch.from_numpy(new_weights).cuda()
 
-        next_new_conv.bias.data = next_conv.bias.data
+        next_new_conv.bias.data = torch.from_numpy(next_conv.bias.data.cpu().numpy().copy()).cuda() 
 
     if not next_conv is None:
         features = torch.nn.Sequential(
-                *(replace_layers(model.features, i, [layer_index, layer_index+offset], \
-                    [new_conv, next_new_conv]) for i, _ in enumerate(model.features)))
+                *(replace_layers(model.features, i, [layer_index, layer_index + 1, layer_index+offset], \
+                    [new_conv, new_bn, next_new_conv]) for i, _ in enumerate(model.features)))
         del model.features
         del conv
 
@@ -78,8 +114,8 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index, batch_norm=False):
     else:
         #Prunning the last conv layer. This affects the first linear layer of the classifier.
         model.features = torch.nn.Sequential(
-                *(replace_layers(model.features, i, [layer_index], \
-                    [new_conv]) for i, _ in enumerate(model.features)))
+                *(replace_layers(model.features, i, [layer_index, layer_index+1], \
+                    [new_conv, new_bn]) for i, _ in enumerate(model.features)))
         layer_index = 0
         old_linear_layer = None
         if len(model.classifier._modules):
@@ -107,16 +143,18 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index, batch_norm=False):
         new_weights[:, int(filter_index * params_per_input_channel) :] = \
             old_weights[:, int((filter_index + 1) * params_per_input_channel) :]
         
-        new_linear_layer.bias.data = old_linear_layer.bias.data
+        new_linear_layer.bias.data = torch.from_numpy(old_linear_layer.bias.data.cpu().numpy()).cuda()
 
         new_linear_layer.weight.data = torch.from_numpy(new_weights).cuda()
+
+        # print(np.sum(old_weights, axis=0).shape, np.sum(new_weights, axis=0).shape)
 
         if len(model.classifier._modules):
             classifier = torch.nn.Sequential(
                 *(replace_layers(model.classifier, i, [layer_index], \
                     [new_linear_layer]) for i, _ in enumerate(model.classifier)))
         else:
-            classifier = new_linear_layer
+            classifier = torch.nn.Sequential(new_linear_layer)
 
         del model.classifier
         del next_conv

@@ -49,15 +49,13 @@ def main():
         conv_indices = [idx for idx, (n, p) in enumerate(model.features._modules.items()) if isinstance(p, nn.modules.conv.Conv2d)]
 
         for layer_index, filter_list in zip(conv_indices, candidates):
-            # print(layer_index)
             filters_to_remove = list(filter_list)
             sorted(filters_to_remove)
             
             while len(filters_to_remove):
                 filter_index = filters_to_remove.pop(0)
-                model = prune_vgg16_conv_layer(model, layer_index, filter_index)
+                model = prune_vgg16_conv_layer(model, layer_index, filter_index, use_batch_norm=True)
                 update_list(filters_to_remove)
-
         # save the pruned model
         pruned_model_name = args.arch + '_{}'.format(i) + '_pruned_model.pth'
         torch.save(model, os.path.join(model_save_directory, pruned_model_name))
