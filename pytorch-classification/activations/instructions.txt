@@ -1,0 +1,42 @@
+to train a ten-way model
+sh scripts/train.sh
+to train 10 binary model
+sh scripts/train_binary.sh (may need to change GPU numbers...)
+
+
+------------ models above are already trained, if train another will overwrite --------------
+
+to evaluate, see first (ten-way) and second line (binary to ten-way) in scripts/evalaute.sh 
+
+the binary-to-tenway's core function is test_list, which is a modified version of the original test function.
+
+
+--------------------------------------------------------------------------------------------
+
+To generate activations given a model
+
+1) Specify model checkpoint location in scripts/activations.sh
+2) Specify channel score directory output location in scripts/activation.sh
+
+python3 evaluate.py -a vgg19_bn --resume INSERT_CHECKPOINT_DIR/checkpoint.pt.tar --evaluate --class-index ${i} -s INSERT_LC_LOG_DIRECTORY > observe_logs/observe_${i}.log
+
+2) Run script: sh scripts/activations.sh
+
+Note: To specify passing inputs from test set specify --prune-test 1
+
+python3 evaluate.py -a vgg19_bn --resume INSERT_CHECKPOINT_DIR/checkpoint.pt.tar --evaluate --class-index ${i} -s INSERT_LC_LOG_DIRECTORY --prune-test 1 > observe_logs/observe_${i}.log
+
+Note: To specify saving full feature map data speficy --store-data INSERT_FEATURE_MAP_DIRECTORY
+
+python3 evaluate.py -a vgg19_bn --resume INSERT_CHECKPOINT_DIR/checkpoint.pt.tar --evaluate --class-index ${i} -s INSERT_LC_LOG_DIRECTORY --prune-test 1 --store-data INSERT_FEATURE_MAP_DIRECTORY > observe_logs/observe_${i}.log
+
+--------------------------------------------------------------------------------------------
+
+To generate pruning candidates given activation scores
+
+1) Make and specify directory to save candidate list
+2) Make and specify directory to load lc logs
+
+	python3 zero_policy.py --save prune_candidates_epoch20_training/ --load lc_logs_train_20_epoch/
+
+Output directory is prune_candidates_epoch20_training/ 

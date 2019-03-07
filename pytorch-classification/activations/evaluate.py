@@ -24,32 +24,12 @@ import pickle
 import dataset
 import numpy as np
 
+from torch.utils.data import Dataset, DataLoader
+
 
 from utils import Bar, Logger, AverageMeter, accuracy, mkdir_p, savefig
 
 
-
-class MyTrainDataset(Dataset):
-    def __init__(self, class_index):
-        self.cifar10 = datasets.CIFAR10(root='./data',
-                                        download=True,
-                                        train=True,
-                                        transform=transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-    ]))
-
-    def __getitem__(self, index):
-        data, target = self.cifar10[index]
-
-        # Your transformations here (or set it in CIFAR10)
-
-        return data, target, index
-
-    def __len__(self):
-        return len(self.cifar10)
 
 
 activations = []
@@ -199,13 +179,13 @@ def main():
         num_classes = 2
 
 
-    # trainset = dataloader(root='./data', train=True, download=True, transform=transform_train)
-    # trainloader = data.DataLoader(trainset, batch_size=args.train_batch, shuffle=True, num_workers=args.workers)
+    # trainset = MyTrainDataset(args.class_index)
+    # trainloader = data.DataLoader(trainset, batch_size=1000, shuffle=True, num_workers=args.workers)
 
     #testset = dataloader(root='./data', train=False, download=False, transform=transform_test)
-    #testloader = data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.workers)
+    # testloader = data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.workers)
     testloader = dataset.test_loader(args.class_index, batch_size=1000)
-    trainloader = dataset.loader(args.class_index, batch_size= 1000)
+    trainloader = dataset.loader(args.class_index, batch_size=1000)
     # Model
     print("==> creating model '{}'".format(args.arch))
     if args.arch.startswith('resnext'):
@@ -284,7 +264,11 @@ def main():
 
         else:
             print('\nEvaluation only')
-            test_loss, test_acc = test(trainloader, model, criterion, start_epoch, use_cuda)
+            if args.prune_test == 1:
+                loader = testloader
+            else:
+                loader = trainloader
+            test_loss, test_acc = test(loader, model, criterion, start_epoch, use_cuda)
             print(' Test Loss:  %.8f, Test Acc:  %.2f' % (test_loss, test_acc))
         return
 
@@ -309,7 +293,7 @@ def test(testloader, model, criterion, epoch, use_cuda):
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = torch.autograd.Variable(inputs, volatile=True), torch.autograd.Variable(targets)
-        print("Absolute index of inputs: ", idx[:20])		
+        # print("Absolute index of inputs: ", idx[:20])		
         # print("Image index: {}".format(idx))
         # compute output
         outputs = model(inputs)
@@ -330,7 +314,7 @@ def test(testloader, model, criterion, epoch, use_cuda):
     np_activations =  np.array(activations)
     print("verify layer shape: ", np_activations.shape)
     print("verify channel shapes: ", [c.shape for c in np_activations])
-    np.save(open("lc_logs/class_{}_lc.npy".format(args.class_index), "wb"), np_activations)
+    np.save(open("{}/class_{}_lc.npy".format(args.save, args.class_index), "wb"), np_activations)
     return (losses.avg, top1.avg)
 
 def test_list(testloader, model_list, criterion, epoch, use_cuda):

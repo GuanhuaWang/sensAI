@@ -15,26 +15,18 @@ from cifar10class import *
 
 
 def loader(class_index, batch_size=1000, num_workers=2, pin_memory=True):
-    """trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True,
-                                        transform=transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-    ])) """
-
     transform_train = transforms.Compose([
+        transforms.ToPILImage(),    
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-    ])
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)) ])
 
     # cat/random single classifier
     cat_dog_trainset = \
        i_DatasetMaker(
 #            [get_class_i(x_train, y_train, classDict['cat']), get_class_i(x_train, y_train, classDict['dog'])],transform_with_aug)
-            [get_class_i(x_train, y_train, class_index)],transform_train)
+            [get_class_i(x_train, y_train, class_index)], class_index, transform_train)
     return data.DataLoader(cat_dog_trainset,
         batch_size=batch_size,
         shuffle=True,
