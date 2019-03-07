@@ -128,7 +128,7 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index, use_batch_norm=Fals
             old_linear_layer = model.classifier
 
         if old_linear_layer is None:
-            raise BaseException("No linear laye found in classifier")
+            raise BaseException("No linear layer found in classifier")
         params_per_input_channel = old_linear_layer.in_features / conv.out_channels
 
         new_linear_layer = \
@@ -175,7 +175,7 @@ def prune_last_fc_layer(model, class_idx):
         old_linear_layer = model.classifier
 
     if old_linear_layer is None:
-            raise BaseException("No linear laye found in classifier")
+            raise BaseException("No linear layer found in classifier")
 
     new_linear_layer = \
         torch.nn.Linear(int(old_linear_layer.in_features), 
