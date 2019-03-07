@@ -28,6 +28,30 @@ import numpy as np
 from utils import Bar, Logger, AverageMeter, accuracy, mkdir_p, savefig
 
 
+
+class MyTrainDataset(Dataset):
+    def __init__(self, class_index):
+        self.cifar10 = datasets.CIFAR10(root='./data',
+                                        download=True,
+                                        train=True,
+                                        transform=transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+    ]))
+
+    def __getitem__(self, index):
+        data, target = self.cifar10[index]
+
+        # Your transformations here (or set it in CIFAR10)
+
+        return data, target, index
+
+    def __len__(self):
+        return len(self.cifar10)
+
+
 activations = []
 sizes = []
 
@@ -119,6 +143,8 @@ parser.add_argument('--binary', action='store_true', help='whether to use binary
 
 parser.add_argument('--class-index', default=0, type=int,
                     help='class index for class specific activation')
+parser.add_argument('-s', '--save', default='./lc_logs', type=str, help='The path to store the saved feature map lc scores')
+parser.add_argument('--prune-test', default='0', type=int, help='Prune according to test set 1. Prune according to training set 0')
 
 
 args = parser.parse_args()
@@ -179,7 +205,7 @@ def main():
     #testset = dataloader(root='./data', train=False, download=False, transform=transform_test)
     #testloader = data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.workers)
     testloader = dataset.test_loader(args.class_index, batch_size=1000)
-
+    trainloader = dataset.loader(args.class_index, batch_size= 1000)
     # Model
     print("==> creating model '{}'".format(args.arch))
     if args.arch.startswith('resnext'):
@@ -233,6 +259,8 @@ def main():
             start_epoch = checkpoint['epoch']
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
+            # model = torch.load('/home/ubuntu/baseModel/pytorch-classification/checkpoints/vgg19_bn_20_epochs')	
+            # model = torch.nn.DataParallel(model).cuda()
             logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
         else:
             logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
@@ -256,7 +284,7 @@ def main():
 
         else:
             print('\nEvaluation only')
-            test_loss, test_acc = test(testloader, model, criterion, start_epoch, use_cuda)
+            test_loss, test_acc = test(trainloader, model, criterion, start_epoch, use_cuda)
             print(' Test Loss:  %.8f, Test Acc:  %.2f' % (test_loss, test_acc))
         return
 

@@ -93,6 +93,7 @@ class i_DatasetMaker(Dataset):
         img = t[1]
         abs_indx = t[0]
         img = self.transformFunc(img)
+        # print(type(img))
         return img, self.class_index, abs_indx
 
     def __len__(self):
