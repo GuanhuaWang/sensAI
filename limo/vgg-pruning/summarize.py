@@ -28,7 +28,6 @@ if __name__ == '__main__':
             bottom_indices = [non_zeros[i][0] for i in range(len(indices)) if indices[i] == 0]
             top_indices = [non_zeros[i][0] for i in range(len(indices)) if indices[i] == 2]
 
-
             layer_summary["Bottom"] = bottom
             layer_summary["Top"] = top
 
