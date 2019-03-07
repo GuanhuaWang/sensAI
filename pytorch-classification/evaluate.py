@@ -450,12 +450,10 @@ def test_list(testloader, model_list, criterion, epoch, use_cuda):
             inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = torch.autograd.Variable(inputs, volatile=True), torch.autograd.Variable(targets)
 
-        # compute output
-        # outputs = torch.autograd.Variable(torch.Tensor(input.size(0), 10))
         output_list = []
         if args.pruned:
             for model_idx, model in enumerate(model_list):
-                output_current = model(inputs)[:, model_idx].unsqueeze(1)
+                output_current = model(inputs)[:, 0].unsqueeze(1)
                 output_list.append(output_current)
         else:
             for model in model_list:

@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 
 sys.path.append('/home/ubuntu/zihao/rona_experiments/pytorch-classification') # TODO change it to relative directory
-from prune import prune_vgg16_conv_layer
+from prune import prune_vgg16_conv_layer, prune_last_fc_layer
 import models.cifar as models
 
 parser = argparse.ArgumentParser(description='VGG with mask layer on cifar10')
@@ -57,6 +57,7 @@ def main():
                 model = prune_vgg16_conv_layer(model, layer_index, filter_index, use_batch_norm=True)
                 update_list(filters_to_remove)
         # save the pruned model
+        model = prune_last_fc_layer(model, i)
         pruned_model_name = args.arch + '_{}'.format(i) + '_pruned_model.pth'
         torch.save(model, os.path.join(model_save_directory, pruned_model_name))
 

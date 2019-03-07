@@ -128,7 +128,7 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index, use_batch_norm=Fals
             old_linear_layer = model.classifier
 
         if old_linear_layer is None:
-            raise BaseException("No linear laye found in classifier")
+            raise BaseException("No linear layer found in classifier")
         params_per_input_channel = old_linear_layer.in_features / conv.out_channels
 
         new_linear_layer = \
@@ -147,8 +147,6 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index, use_batch_norm=Fals
 
         new_linear_layer.weight.data = torch.from_numpy(new_weights).cuda()
 
-        # print(np.sum(old_weights, axis=0).shape, np.sum(new_weights, axis=0).shape)
-
         if len(model.classifier._modules):
             classifier = torch.nn.Sequential(
                 *(replace_layers(model.classifier, i, [layer_index], \
@@ -160,6 +158,47 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index, use_batch_norm=Fals
         del next_conv
         del conv
         model.classifier = classifier
+
+    return model
+
+def prune_last_fc_layer(model, class_idx):
+    layer_index = 0
+    old_linear_layer = None
+    counter = 0
+    if len(model.classifier._modules):
+        for _, module in model.classifier._modules.items():
+            if isinstance(module, torch.nn.Linear):
+                old_linear_layer = module
+                layer_index = counter
+            counter += 1
+    else:
+        old_linear_layer = model.classifier
+
+    if old_linear_layer is None:
+            raise BaseException("No linear layer found in classifier")
+
+    new_linear_layer = \
+        torch.nn.Linear(int(old_linear_layer.in_features), 
+            1)
+    
+    old_weights = old_linear_layer.weight.data.cpu().numpy()
+    new_weights = new_linear_layer.weight.data.cpu().numpy()        
+
+    new_weights[:, :] = old_weights[class_idx, :]
+    
+    new_linear_layer.bias.data = torch.from_numpy(np.asarray(old_linear_layer.bias.data.cpu().numpy()[class_idx])).cuda()
+
+    new_linear_layer.weight.data = torch.from_numpy(new_weights).cuda()
+
+    if len(model.classifier._modules):
+        classifier = torch.nn.Sequential(
+            *(replace_layers(model.classifier, i, [layer_index], \
+                [new_linear_layer]) for i, _ in enumerate(model.classifier)))
+    else:
+        classifier = torch.nn.Sequential(new_linear_layer)
+
+    del model.classifier
+    model.classifier = classifier
 
     return model
 
