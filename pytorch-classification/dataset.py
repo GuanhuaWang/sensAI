@@ -29,7 +29,7 @@ def loader(class_index, batch_size=64, num_workers=2, pin_memory=True):
     cat_dog_trainset = \
         DatasetMaker(
 #            [get_class_i(x_train, y_train, classDict['cat']), get_class_i(x_train, y_train, classDict['dog'])],transform_with_aug)
-            [get_class_i(x_train, y_train, class_index), get_represent_neg_class_i(x_train, y_train, class_index)],transform_with_aug)
+            [get_random_images(x_train, y_train, class_index), get_class_i(x_train, y_train, class_index)],transform_with_aug)
     return data.DataLoader(cat_dog_trainset,
 #        datasets.ImageFolder(path,
 #                             transforms.Compose([
@@ -55,7 +55,7 @@ def test_loader(class_index, batch_size=64, num_workers=2, pin_memory=True):
     cat_dog_testset  = \
         DatasetMaker(
 #            [get_class_i(x_test , y_test , classDict['cat']), get_class_i(x_test , y_test , classDict['dog'])],transform_no_aug)
-            [get_class_i(x_test , y_test , class_index), get_random_images(x_test , y_test , class_index)],transform_no_aug)
+            [get_random_images(x_test , y_test , class_index), get_class_i(x_test , y_test , class_index)],transform_no_aug)
     return data.DataLoader(cat_dog_testset,
 #        datasets.ImageFolder(path,
 #                             transforms.Compose([

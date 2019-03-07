@@ -41,7 +41,7 @@ def main():
         model = torch.nn.DataParallel(model).cuda()
 
         # load checkpoints
-        checkpoint = torch.load(os.path.join(args.resume, args.arch, 'checkpoint.pth.tar'))
+        checkpoint = torch.load(os.path.join(args.resume, 'checkpoint.pth.tar'))
         model.load_state_dict(checkpoint['state_dict'])
 
         model = model.module

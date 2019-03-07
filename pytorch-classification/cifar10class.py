@@ -18,10 +18,10 @@ transform_with_aug = transforms.Compose([TPIL, RC, RHF, TT, NRM])
 transform_no_aug   = transforms.Compose([TT, NRM])
 
 # Representative images index
-repre_idx = np.loadtxt('bottom500.txt')
-print(repre_idx.shape)
-repre_top_idx = np.loadtxt('top500.txt')
-print(repre_top_idx.shape)
+# repre_idx = np.loadtxt('bottom500.txt')
+# print(repre_idx.shape)
+# repre_top_idx = np.loadtxt('top500.txt')
+# print(repre_top_idx.shape)
 # Downloading/Louding CIFAR10 data
 trainset  = CIFAR10(root='./data', train=True , download=True)#, transform = transform_with_aug)
 testset   = CIFAR10(root='./data', train=False, download=True)#, transform = transform_no_aug)
@@ -150,17 +150,17 @@ class DatasetMaker(Dataset):
 # ================== Usage ================== #
 
 # Let's choose cats (class 3 of CIFAR) and dogs (class 5 of CIFAR) as trainset/testset
-cat_dog_trainset = \
-    DatasetMaker(
-        [get_represent_neg_class_i(x_train, y_train, classDict['cat']), get_random_images(x_train, y_train, classDict['cat'])],
-        transform_with_aug
-    )
-cat_dog_testset  = \
-    DatasetMaker(
-        [get_class_i(x_test , y_test , classDict['cat']), get_random_images(x_test , y_test, classDict['cat'])],
-        transform_no_aug
-    )
-kwargs = {'num_workers': 2, 'pin_memory': False}
+# cat_dog_trainset = \
+#     DatasetMaker(
+#         [get_represent_neg_class_i(x_train, y_train, classDict['cat']), get_random_images(x_train, y_train, classDict['cat'])],
+#         transform_with_aug
+#     )
+# cat_dog_testset  = \
+#     DatasetMaker(
+#         [get_class_i(x_test , y_test , classDict['cat']), get_random_images(x_test , y_test, classDict['cat'])],
+#         transform_no_aug
+#     )
+# kwargs = {'num_workers': 2, 'pin_memory': False}
 
 # Create datasetLoaders from trainset and testset
 

@@ -1,5 +1,7 @@
 pytorch-classification/data/
 rona/vgg-pruning/pruned_models/
+pytorch-classification/checkpoints/
+rona/vgg-pruning/pruned_models_20_epochs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
