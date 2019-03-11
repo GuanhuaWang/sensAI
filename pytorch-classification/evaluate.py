@@ -20,52 +20,51 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import models.cifar as models
 import pdb
+import pickle
+import dataset
+import numpy as np
 
-from utils import Bar, Logger, AverageMeter, accuracy, mkdir_p, savefig
 from torch.utils.data import Dataset, DataLoader
 
 
-class MyTrainDataset(Dataset):
-    def __init__(self):
-        self.cifar10 = datasets.CIFAR10(root='./data',
-                                        download=True,
-                                        train=True,
-                                        transform=transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-    ]))
+from utils import Bar, Logger, AverageMeter, accuracy, mkdir_p, savefig
 
-    def __getitem__(self, index):
-        data, target = self.cifar10[index]
 
-        # Your transformations here (or set it in CIFAR10)
 
-        return data, target, index
 
-    def __len__(self):
-        return len(self.cifar10)
+activations = []
+sizes = []
 
-class MyTestDataset(Dataset):
-    def __init__(self):
-        self.cifar10 = datasets.CIFAR10(root='./data',
-                                        download=False,
-                                        train=False,
-                                        transform=transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-    ]))
-        
-    def __getitem__(self, index):
-        data, target = self.cifar10[index]
-        
-        # Your transformations here (or set it in CIFAR10)
-        
-        return data, target, index
+"""
+    1) Calculate squashed filter values
+    2) Save feature map output into feature_map_out_file
+        Each layer feature map output is saved as a single torch tensor
+        To load:
+            layers_channels = []
+            fmap_file =  open("feature_map_data/class_{}_fmap.pt".format(class_index), "rb")
+            data_buffer = io.BytesIO(fmap_file.read())
+            for _ in range(16):
+                layers_channels.append(torch.load(data_buffer))
+"""
+def parse_activation(feature_map):
+    if args.save_data != '':
+         torch.save(feature_map, feature_map_out_file)
+    n, c, h, w = list(feature_map.size())
+    nch = torch.sum(feature_map, dim=2)
+    nc = torch.sum(nch, dim=2)
+    c = torch.sum(nc, dim=0)
+    return np.array([float(c_i) for c_i in c])
+	
 
-    def __len__(self):
-        return len(self.cifar10)
+"""
+    Apply a hook to RelU layer
+"""
+def hook(self, input, output):
+    if self.__class__.__name__ == 'ReLU':
+       activations.append(parse_activation(output.data))
+
+def apply_hook(m):
+   m.register_forward_hook(hook)
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -81,9 +80,9 @@ parser.add_argument('--epochs', default=300, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('--train-batch', default=64, type=int, metavar='N',
+parser.add_argument('--train-batch', default=128, type=int, metavar='N',
                     help='train batchsize')
-parser.add_argument('--test-batch', default=1000, type=int, metavar='N',
+parser.add_argument('--test-batch', default=100, type=int, metavar='N',
                     help='test batchsize')
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate')
@@ -121,10 +120,20 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
 #Device options
 parser.add_argument('--gpu-id', default='0', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
-parser.add_argument('--pruned', action='store_true', help='whether testing pruned models')
 parser.add_argument('--binary', action='store_true', help='whether to use binary testing')
 
+parser.add_argument('--class-index', default=0, type=int,
+                    help='class index for class specific activation')
+parser.add_argument('-s', '--save', default='./lc_logs', type=str, help='The path to store the saved feature map lc scores')
+parser.add_argument('--prune-test', default='0', type=int, help='Prune according to test set 1. Prune according to training set 0')
+parser.add_argument('--save-data', default='', type=str, help='Store the full feature map output data')
+
+
+
 args = parser.parse_args()
+feature_map_out_file = None
+if args.save_data != '':
+   feature_map_out_file = open("feature_map_data/class_{}_fmap.pt".format(args.class_index), "ab+")
 state = {k: v for k, v in args._get_kwargs()}
 
 # Validate dataset
@@ -144,16 +153,12 @@ if use_cuda:
 
 best_acc = 0  # best test accuracy
 
-torch.set_printoptions(threshold=10000)
-
 def main():
     global best_acc
     start_epoch = args.start_epoch  # start from epoch 0 or last checkpoint epoch
 
     if not os.path.isdir(args.checkpoint):
         mkdir_p(args.checkpoint)
-
-
 
     # Data
     print('==> Preparing dataset %s' % args.dataset)
@@ -179,12 +184,13 @@ def main():
         num_classes = 2
 
 
-    trainset = MyTrainDataset()#dataloader(root='./data', train=True, download=True, transform=transform_train)
-    trainloader = data.DataLoader(trainset, batch_size=args.train_batch, shuffle=True, num_workers=args.workers)
+    # trainset = MyTrainDataset(args.class_index)
+    # trainloader = data.DataLoader(trainset, batch_size=1000, shuffle=True, num_workers=args.workers)
 
-    testset = MyTestDataset() #dataloader(root='./data', train=False, download=False, transform=transform_test)
-    testloader = data.DataLoader(testset, batch_size=args.test_batch, shuffle=False, num_workers=args.workers)
-
+    #testset = dataloader(root='./data', train=False, download=False, transform=transform_test)
+    # testloader = data.DataLoader(testset, batch_size=1000, shuffle=False, num_workers=args.workers)
+    testloader = dataset.test_loader(args.class_index, batch_size=1000)
+    trainloader = dataset.loader(args.class_index, batch_size=1000)
     # Model
     print("==> creating model '{}'".format(args.arch))
     if args.arch.startswith('resnext'):
@@ -238,132 +244,38 @@ def main():
             start_epoch = checkpoint['epoch']
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
+            # model = torch.load('/home/ubuntu/baseModel/pytorch-classification/checkpoints/vgg19_bn_20_epochs')	
+            # model = torch.nn.DataParallel(model).cuda()
             logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
         else:
             logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
             logger.set_names(['Learning Rate', 'Train Loss', 'Valid Loss', 'Train Acc.', 'Valid Acc.'])
-
 
     if args.evaluate:
         if args.binary:
             model_list = []
             args.checkpoint = os.path.dirname(args.resume)
 
-            if args.pruned:
-                for i in range(10):
-                    pruned_model_name = args.arch + '_{}'.format(i) + '_pruned_model.pth'
-                    model_path = os.path.join(args.checkpoint, pruned_model_name)
-                    model = torch.load(model_path)
-                    model = torch.nn.DataParallel(model).cuda()
-                    model_list.append(model)
-            else:
-                for i in range(10):
-                    model = models.__dict__[args.arch](num_classes=num_classes)
-                    model = torch.nn.DataParallel(model).cuda() 
+            for i in range(10):
+                model = models.__dict__[args.arch](num_classes=num_classes)
+                model = torch.nn.DataParallel(model).cuda() 
 
-                    folder = args.checkpoint + '_{}'.format(i)
-                    print(folder)
-                    checkpoint = torch.load(os.path.join(folder, 'checkpoint.pth.tar'))
-                    model.load_state_dict(checkpoint['state_dict'])
-                    model_list.append(model)
+                folder = args.checkpoint + '_{}'.format(i)
+                print(folder)
+                checkpoint = torch.load(os.path.join(folder, 'checkpoint.pth.tar'))
+                model.load_state_dict(checkpoint['state_dict'])
+                model_list.append(model)
             test_acc = test_list(testloader, model_list, criterion, start_epoch, use_cuda)
 
-            # pdb.set_trace()
-
         else:
-
             print('\nEvaluation only')
-            test_loss, test_acc = test(testloader, model, criterion, start_epoch, use_cuda)
+            if args.prune_test == 1:
+                loader = testloader
+            else:
+                loader = trainloader
+            test_loss, test_acc = test(loader, model, criterion, start_epoch, use_cuda)
             print(' Test Loss:  %.8f, Test Acc:  %.2f' % (test_loss, test_acc))
         return
-
-    # Train and val
-    for epoch in range(start_epoch, start_epoch+1): #args.epochs):
-        adjust_learning_rate(optimizer, epoch)
-
-        print('\nEpoch: [%d | %d] LR: %f' % (epoch + 1, args.epochs, state['lr']))
-
-        train_loss, train_acc = train(trainloader, model, criterion, optimizer, epoch, use_cuda)
-        test_loss, test_acc = test(testloader, model, criterion, epoch, use_cuda)
-
-        # append logger file
-        logger.append([state['lr'], train_loss, test_loss, train_acc, test_acc])
-
-        # save model
-        is_best = test_acc > best_acc
-        best_acc = max(test_acc, best_acc)
-        save_checkpoint({
-                'epoch': epoch + 1,
-                'state_dict': model.state_dict(),
-                'acc': test_acc,
-                'best_acc': best_acc,
-                'optimizer' : optimizer.state_dict(),
-            }, is_best, checkpoint=args.checkpoint)
-
-    logger.close()
-    logger.plot()
-    savefig(os.path.join(args.checkpoint, 'log.eps'))
-
-    print('Best acc:')
-    print(best_acc)
-
-def train(trainloader, model, criterion, optimizer, epoch, use_cuda):
-    # switch to train mode
-    model.train()
-    # guanhua
-    print('===TRAIN===')
-    batch_time = AverageMeter()
-    data_time = AverageMeter()
-    losses = AverageMeter()
-    top1 = AverageMeter()
-    top5 = AverageMeter()
-    end = time.time()
-
-#    bar = Bar('Processing', max=len(trainloader))
-    for batch_idx, (inputs, targets, idx) in enumerate(trainloader):
-        # measure data loading time
-        data_time.update(time.time() - end)
-
-        if use_cuda:
-            inputs, targets = inputs.cuda(), targets.cuda(async=True)
-        inputs, targets = torch.autograd.Variable(inputs), torch.autograd.Variable(targets)
-
-        print('Batch idx {}, dataset index {}'.format(batch_idx, idx))
-        # compute output
-        outputs = model(inputs)
-        print('outputs {}'.format(outputs))
-        loss = criterion(outputs, targets)
-
-        # measure accuracy and record loss
-        prec1, prec5 = accuracy(outputs.data, targets.data, topk=(1, 5))
-        losses.update(loss.data[0], inputs.size(0))
-        top1.update(prec1[0], inputs.size(0))
-        top5.update(prec5[0], inputs.size(0))
-
-        # compute gradient and do SGD step
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
-
-        # plot progress
- #       bar.suffix  = '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f} | top5: {top5: .4f}'.format(
-  #                  batch=batch_idx + 1,
-   #                 size=len(trainloader),
-    #                data=data_time.avg,
-     #               bt=batch_time.avg,
-      #              total=bar.elapsed_td,
-       #             eta=bar.eta_td,
-        #            loss=losses.avg,
-         #           top1=top1.avg,
-          #          top5=top5.avg,
-           #         )
-#        bar.next()
-#    bar.finish()
-    return (losses.avg, top1.avg)
 
 def test(testloader, model, criterion, epoch, use_cuda):
     global best_acc
@@ -376,32 +288,24 @@ def test(testloader, model, criterion, epoch, use_cuda):
 
     # switch to evaluate mode
     model.eval()
-
-    # guanhua
-    print('===EVAL===')
-
+ 
+    model.apply(apply_hook)
     end = time.time()
-#    bar = Bar('Processing', max=len(testloader))
+    bar = Bar('Processing', max=len(testloader))
     for batch_idx, (inputs, targets, idx) in enumerate(testloader):
         # measure data loading time
         data_time.update(time.time() - end)
-
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = torch.autograd.Variable(inputs, volatile=True), torch.autograd.Variable(targets)
-
-        print('Batch idx {}, dataset index {}'.format(batch_idx, idx))
-        #print(inputs.size())
-        #print(targets.size())
+        # print("Absolute index of inputs: ", idx[:20])		
+        # print("Image index: {}".format(idx))
         # compute output
         outputs = model(inputs)
-		# guanhua output
-        print('outputs {}'.format(outputs))
-
         loss = criterion(outputs, targets)
 
         # measure accuracy and record loss
-        prec1, prec5 = accuracy(outputs.data, targets.data, topk=(1, 5))
+        prec1, prec5 = accuracy(outputs.data, targets.data, topk=(1,5))
         losses.update(loss.data[0], inputs.size(0))
         top1.update(prec1[0], inputs.size(0))
         top5.update(prec5[0], inputs.size(0))
@@ -410,20 +314,12 @@ def test(testloader, model, criterion, epoch, use_cuda):
         batch_time.update(time.time() - end)
         end = time.time()
 
-        # plot progress
-#        bar.suffix  = '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f} | top5: {top5: .4f}'.format(
- #                   batch=batch_idx + 1,
-  #                  size=len(testloader),
-   #                 data=data_time.avg,
-    #                bt=batch_time.avg,
-     #               total=bar.elapsed_td,
-      #              eta=bar.eta_td,
-       #             loss=losses.avg,
-        #            top1=top1.avg,
-         #           top5=top5.avg,
-          #          )
-#        bar.next()
-#    bar.finish()
+    print("Number of activation layers: ", len(activations))
+    print("Sizes of each activation output layer: ")
+    np_activations =  np.array(activations)
+    print("verify layer shape: ", np_activations.shape)
+    print("verify channel shapes: ", [c.shape for c in np_activations])
+    np.save(open("{}/class_{}_lc.npy".format(args.save, args.class_index), "wb"), np_activations)
     return (losses.avg, top1.avg)
 
 def test_list(testloader, model_list, criterion, epoch, use_cuda):
@@ -442,10 +338,10 @@ def test_list(testloader, model_list, criterion, epoch, use_cuda):
 
     end = time.time()
     bar = Bar('Processing', max=len(testloader))
-    for batch_idx, (inputs, targets, idx) in enumerate(testloader):
+    for batch_idx, (inputs, targets) in enumerate(testloader):
         # measure data loading time
         data_time.update(time.time() - end)
-
+        
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = torch.autograd.Variable(inputs, volatile=True), torch.autograd.Variable(targets)
@@ -453,16 +349,13 @@ def test_list(testloader, model_list, criterion, epoch, use_cuda):
         # compute output
         # outputs = torch.autograd.Variable(torch.Tensor(input.size(0), 10))
         output_list = []
-        if args.pruned:
-            for model_idx, model in enumerate(model_list):
-                output_current = model(inputs)[:, model_idx].unsqueeze(1)
-                output_list.append(output_current)
-        else:
-            for model in model_list:
-                output_current = model(inputs)[:, 0].unsqueeze(1)
-                output_list.append(output_current)
+        for model in model_list:
+            output_current = model(inputs)[:, 0].unsqueeze(1)
+            output_list.append(output_current)
         outputs = torch.cat(output_list, 1)
+
         # pdb.set_trace()
+            # loss = criterion(outputs, targets)
 
         # measure accuracy and record loss
         prec1, prec5 = accuracy(outputs.data, targets.data, topk=(1, 5))
