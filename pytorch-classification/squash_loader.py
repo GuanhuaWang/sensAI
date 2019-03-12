@@ -11,7 +11,7 @@ import models.cifar as models
 sys.path.append('/home/ubuntu/guanhua/sensai_experiments/pytorch-classification')
 
 parser = argparse.ArgumentParser(description='VGG with mask layer on cifar10')
-parser.add_argument('-c', '--prune-candidates', default="./fm_logs", type=str, help='Directory which stores the prune candidates for each model')
+parser.add_argument('-c', '--prune-candidates', default="./squash_logs", type=str, help='Get squashed value for each feature-map')
 parser.add_argument('-a', '--arch', default='vgg19_bn', type=str, help='The architecture of the trained model')
 parser.add_argument('-r', '--resume', default='', type=str, help='The path to the checkpoints')
 parser.add_argument('-s', '--save', default='./pruned_models', type=str, help='The path to store the pruned models')
