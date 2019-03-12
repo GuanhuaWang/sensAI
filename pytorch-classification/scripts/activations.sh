@@ -1,5 +1,5 @@
 mkdir observe_logs
-mkdir fm_logs
+mkdir squash_logs
 
 for i in 0 1 2 3 4 5 6 7 8 9
 do

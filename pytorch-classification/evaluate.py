@@ -124,7 +124,7 @@ parser.add_argument('--binary', action='store_true', help='whether to use binary
 
 parser.add_argument('--class-index', default=0, type=int,
                     help='class index for class specific activation')
-parser.add_argument('-s', '--save', default='./fm_logs', type=str, help='The path to store the saved feature map (fm) scores')
+parser.add_argument('-s', '--save', default='./squash_logs', type=str, help='The path to store the saved feature map (fm) scores')
 parser.add_argument('--prune-test', default='0', type=int, help='Prune according to test set 1. Prune according to training set 0')
 parser.add_argument('--save-data', default='', type=str, help='Store the full feature map output data')
 
