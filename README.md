@@ -8,4 +8,4 @@ To prune
 
 To evaluate binary classifiers:
 
-`python3 evaluate.py -a vgg19_bn --test-batch 100 --resume PATH_TO_AN_ARBITRARY_BINARY_MODEL --evaluate --binary --pruned`
+`python3 evaluate.py -a vgg19_bn --test-batch 100 --resume ~/zihao/rona_experiments/limo/vgg-pruning/pruned_models_90per/vgg19_bn/ --evaluate --binary --pruned`
