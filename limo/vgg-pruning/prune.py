@@ -34,8 +34,7 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index, use_batch_norm=Fals
 
     old_weights = conv.weight.data.cpu().numpy()
     new_weights = new_conv.weight.data.cpu().numpy()
-
-    new_weights[: filter_index, :, :, :] = old_weights[: filter_index, :, :, :]
+    new_weights[:filter_index, :, :, :] = old_weights[:filter_index, :, :, :]
     new_weights[filter_index : , :, :, :] = old_weights[filter_index + 1 :, :, :, :]
     new_conv.weight.data = torch.from_numpy(new_weights).cuda()
 
@@ -45,8 +44,6 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index, use_batch_norm=Fals
     bias[:filter_index] = bias_numpy[:filter_index]
     bias[filter_index : ] = bias_numpy[filter_index + 1 :]
     new_conv.bias.data = torch.from_numpy(bias).cuda()
-
-    # print(np.sum(old_weights, axis=(1, 2, 3)), np.sum(new_weights, axis=(1, 2, 3)))
 
     if use_batch_norm:
         _, bn = list(model.features._modules.items())[layer_index + 1]

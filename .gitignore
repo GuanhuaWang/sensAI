@@ -1,3 +1,4 @@
+limo/vgg-pruning/pruned_models_*
 pytorch-classification/data/
 limo/vgg-pruning/pruned_models/
 pytorch-classification/checkpoints/

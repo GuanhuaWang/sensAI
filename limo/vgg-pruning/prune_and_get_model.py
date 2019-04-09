@@ -34,7 +34,7 @@ def main():
         print('Pruning class {}'.format(i))
         
         # load pruning candidates
-        candidates = np.load(open(os.path.join(args.prune_candidates, 'class_{}.npy'.format(i)), 'rb')).tolist()
+        candidates = np.load(open(os.path.join(args.prune_candidates, 'class_{}_apoz_layer_thresholds.npy'.format(i)), 'rb')).tolist()
 
         # load cifar10 binary model
         model = models.__dict__[args.arch](num_classes=num_classes)
@@ -47,7 +47,7 @@ def main():
         model = model.module
 
         conv_indices = [idx for idx, (n, p) in enumerate(model.features._modules.items()) if isinstance(p, nn.modules.conv.Conv2d)]
-
+        print(len(conv_indices))
         for layer_index, filter_list in zip(conv_indices, candidates):
             filters_to_remove = list(filter_list)
             sorted(filters_to_remove)

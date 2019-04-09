@@ -49,10 +49,10 @@ def get_class_i(x, y, i):
     # Convert the result into a 1-D list
     pos_i = list(pos_i[:,0])
     # Collect all data that match the desired label
-#    print(pos_i)
+    print("positive images: %i" %(len(pos_i)))
     x_i = [x[j] for j in pos_i]
     # Debug info
-#    print("x_i ", x_i)
+    # print("x_i ", x_i)
     return x_i
 
 def get_represent_class_i(x, y, i):
@@ -98,7 +98,7 @@ def get_random_images(x, y, i):
     # Locate position of labels that equal to i
     pos_i = np.argwhere(y == i)
     # Debug info
-    #print("class ", i, " size is ", pos_i.size)
+    print("class ", i, " size is ", pos_i.size)
 
     # Shuffle total number of train images labels
     whole = np.arange(y.size)

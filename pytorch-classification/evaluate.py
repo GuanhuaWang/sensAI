@@ -24,6 +24,8 @@ import pdb
 from utils import Bar, Logger, AverageMeter, accuracy, mkdir_p, savefig
 from torch.utils.data import Dataset, DataLoader
 
+import dataset
+
 
 class MyTrainDataset(Dataset):
     def __init__(self):
@@ -123,6 +125,9 @@ parser.add_argument('--gpu-id', default='0', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
 parser.add_argument('--pruned', action='store_true', help='whether testing pruned models')
 parser.add_argument('--binary', action='store_true', help='whether to use binary testing')
+parser.add_argument('--class-index', default=0, type=int, help='class index for class specific activation')
+parser.add_argument('--prune-test', action='store_true', help='Set to true to prune according to test set ')
+
 
 args = parser.parse_args()
 state = {k: v for k, v in args._get_kwargs()}
@@ -179,11 +184,13 @@ def main():
         num_classes = 2
 
 
-    trainset = MyTrainDataset()#dataloader(root='./data', train=True, download=True, transform=transform_train)
-    trainloader = data.DataLoader(trainset, batch_size=args.train_batch, shuffle=True, num_workers=args.workers)
+    # trainset = MyTrainDataset()
+    # trainloader = data.DataLoader(trainset, batch_size=args.train_batch, shuffle=True, num_workers=args.workers)
 
-    testset = MyTestDataset() #dataloader(root='./data', train=False, download=False, transform=transform_test)
+    testset = MyTestDataset()
     testloader = data.DataLoader(testset, batch_size=args.test_batch, shuffle=False, num_workers=args.workers)
+    #testloader = dataset.test_loader(args.class_index, batch_size=100)
+    trainloader = dataset.loader(args.class_index, batch_size=100)
 
     # Model
     print("==> creating model '{}'".format(args.arch))
@@ -255,6 +262,7 @@ def main():
                     model_path = os.path.join(args.checkpoint, pruned_model_name)
                     model = torch.load(model_path)
                     model = torch.nn.DataParallel(model).cuda()
+                    print('Binary model for Class %i Total params: %.2fM' % (i ,sum(p.numel() for p in model.parameters())/1000000.0))
                     model_list.append(model)
             else:
                 for i in range(10):
@@ -267,8 +275,6 @@ def main():
                     model.load_state_dict(checkpoint['state_dict'])
                     model_list.append(model)
             test_acc = test_list(testloader, model_list, criterion, start_epoch, use_cuda)
-
-            # pdb.set_trace()
 
         else:
 
@@ -382,7 +388,7 @@ def test(testloader, model, criterion, epoch, use_cuda):
 
     end = time.time()
 #    bar = Bar('Processing', max=len(testloader))
-    for batch_idx, (inputs, targets, idx) in enumerate(testloader):
+    for batch_idx, (inputs, targets) in enumerate(testloader):
         # measure data loading time
         data_time.update(time.time() - end)
 
@@ -390,13 +396,8 @@ def test(testloader, model, criterion, epoch, use_cuda):
             inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = torch.autograd.Variable(inputs, volatile=True), torch.autograd.Variable(targets)
 
-        print('Batch idx {}, dataset index {}'.format(batch_idx, idx))
-        #print(inputs.size())
-        #print(targets.size())
-        # compute output
+        print('Batch idx {}'.format(batch_idx))
         outputs = model(inputs)
-		# guanhua output
-        print('outputs {}'.format(outputs))
 
         loss = criterion(outputs, targets)
 
@@ -460,11 +461,12 @@ def test_list(testloader, model_list, criterion, epoch, use_cuda):
                 output_current = model(inputs)[:, 0].unsqueeze(1)
                 output_list.append(output_current)
         outputs = torch.cat(output_list, 1)
-        # pdb.set_trace()
-
+        loss = criterion(outputs, targets)
+#        pdb.set_trace()
+#        print("\n DEBUG: targets {}".format(targets.data))
         # measure accuracy and record loss
         prec1, prec5 = accuracy(outputs.data, targets.data, topk=(1, 5))
-        losses.update(0, inputs.size(0))
+        losses.update(loss.data[0], inputs.size(0))
         top1.update(prec1[0], inputs.size(0))
         top5.update(prec5[0], inputs.size(0))
 
