@@ -1,6 +1,7 @@
 from __future__ import print_function, absolute_import
+import pdb
 
-__all__ = ['accuracy']
+__all__ = ['accuracy', 'accuracy_binary']
 
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
@@ -16,3 +17,9 @@ def accuracy(output, target, topk=(1,)):
         correct_k = correct[:k].view(-1).float().sum(0)
         res.append(correct_k.mul_(100.0 / batch_size))
     return res
+
+def accuracy_binary(output, target):
+    pred = output >= 0.0
+    pred = pred.flatten().long()
+    acc = pred.eq(target).sum().float() / target.numel()
+    return acc.data[0]

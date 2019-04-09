@@ -1,5 +1,8 @@
+limo/vgg-pruning/pruned_models_*
 pytorch-classification/data/
-rona/vgg-pruning/pruned_models/
+limo/vgg-pruning/pruned_models/
+pytorch-classification/checkpoints/
+limo/vgg-pruning/pruned_models_20_epochs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
