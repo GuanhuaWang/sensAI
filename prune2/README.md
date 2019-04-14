@@ -49,7 +49,7 @@ Step 3)
 Compute the feature map activations for the pruned model.
 From prune2 directory,
 ```shell
-./scripts/activations
+./scripts/activations_vgg16.sh
 ```
 
 Feature map activation data should now be stored at ./feature_map_data
