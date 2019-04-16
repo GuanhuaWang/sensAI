@@ -49,7 +49,7 @@ Step 3)
 Compute the feature map activations for the pruned model.
 From prune2 directory,
 ```shell
-./scripts/activations
+./scripts/activations_vgg16.sh
 ```
 
 Feature map activation data should now be stored at ./feature_map_data
@@ -80,7 +80,7 @@ python3 evaluate.py -a vgg --test-batch 100 --pruned --resume ./pruned2_models/v
 Step 6)
 Retrain the model for some number of epochs
 ```shell
-./scripts/train_binary_pruned.sh
+./scripts/train_pruned_binary.sh
 ```
 
 Step 7)
