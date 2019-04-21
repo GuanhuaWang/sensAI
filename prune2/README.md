@@ -2,6 +2,7 @@
 l1 norm pruning taken from https://github.com/Eric-mingjie/rethinking-network-pruning/tree/master/cifar/l1-norm-pruning
 
 ## Experiment Results for L1 Norm Weight Level Pruning + APOZ feature map pruning
+### VGG 16
 Test accuracy of vgg16 (default settings from original repo) after 160 epochs: 93%. <br/>
 Test accuracy after l1 norm weight pruning: 37%
 
@@ -16,6 +17,22 @@ Test accuracy after pruning w/o retraining: 36.2%
 Test accuracy after retraining binary models 1epoch: 70% <br/>
 Test accuracy after retraining binary models 40epoch: 90%
 
+
+### VGG 19
+Test accuracy of vgg19 (default settings from original repo) after 160 epochs: 92%. <br/>
+Test accuracy after l1 norm weight pruning: 14%
+
+Total number of params before l1 norm prune: 20M <br/>
+Total number of params after l1 norm prune: 5.01M
+
+Test accuracy of vgg19 after retraining for 1 epoch: 87%
+Test accuracy of vgg19 after retraining for 20 epoch: 92%
+
+Total number of params per model after apoz prune: ~4.3M <br/>
+Test accuracy after pruning w/o retraining: 69%
+
+Test accuracy after retraining binary models 1epoch: 69% <br/>
+Test accuracy after retraining binary models 40epoch: 89% 
 ## To reproduce
 
 Perform step 0 - 2 inside l1-norm-pruning directory
