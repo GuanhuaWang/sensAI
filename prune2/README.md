@@ -32,7 +32,9 @@ Total number of params per model after apoz prune: ~4.3M <br/>
 Test accuracy after pruning w/o retraining: 69%
 
 Test accuracy after retraining binary models 1epoch: 69% <br/>
-Test accuracy after retraining binary models 40epoch: 89% 
+Test accuracy after retraining binary models 40epoch (lr decay, 0.1, 20, 31): 89% 
+Test accuracy after retraining binary models 40epoch (lr decay, 0.1, 20, 31) + 10k/10k pos/neg: 89% 
+
 ## To reproduce
 
 Perform step 0 - 2 inside l1-norm-pruning directory
