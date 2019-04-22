@@ -15,7 +15,7 @@ Total number of params per model after apoz prune: ~3M <br/>
 Test accuracy after pruning w/o retraining: 36.2%
 
 Test accuracy after retraining binary models 1epoch: 70% <br/>
-Test accuracy after retraining binary models 40epoch: 90%
+Test accuracy after retraining binary models 40epoch: 92.63%
 
 
 ### VGG 19
