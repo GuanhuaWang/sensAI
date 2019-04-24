@@ -159,7 +159,7 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index, use_batch_norm=Fals
 
     return model
 
-def prune_last_fc_layer(model, class_idx):
+def prune_last_fc_layer(model, class_indices):
     layer_index = 0
     old_linear_layer = None
     counter = 0
@@ -177,14 +177,14 @@ def prune_last_fc_layer(model, class_idx):
 
     new_linear_layer = \
         torch.nn.Linear(int(old_linear_layer.in_features), 
-            1)
+            len(class_indices))
     
     old_weights = old_linear_layer.weight.data.cpu().numpy()
     new_weights = new_linear_layer.weight.data.cpu().numpy()        
 
-    new_weights[:, :] = old_weights[class_idx, :]
+    new_weights[:, :] = old_weights[class_indices, :]
     
-    new_linear_layer.bias.data = torch.from_numpy(np.asarray(old_linear_layer.bias.data.cpu().numpy()[class_idx])).cuda()
+    new_linear_layer.bias.data = torch.from_numpy(np.asarray(old_linear_layer.bias.data.cpu().numpy()[class_indices])).cuda()
 
     new_linear_layer.weight.data = torch.from_numpy(new_weights).cuda()
 

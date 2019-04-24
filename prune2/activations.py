@@ -107,16 +107,23 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
 parser.add_argument('--gpu-id', default='0', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
 parser.add_argument('--class-index', default=0, type=int, help='class index for class specific activation')
-
+parser.add_argument('--pruned', default=True, type=bool, help='Pruned or not pruned model, for correct vgg config')
+parser.add_argument('--grouped', type=int, nargs='+', default=[],
+                        help='Generate activations based on the these class indices')
 
 
 args = parser.parse_args()
-feature_map_out_file = open("feature_map_data/class_{}_fmap.pt".format(args.class_index), "ab+")
+
+if args.grouped:
+    feature_map_out_file = open("./feature_map_data/class_({})_fmap.pt".\
+                 format(''.join(filter(lambda x: x.isdigit() or x == '_', str(args.grouped).replace(" ", "_")))), "wb+")
+else:
+    feature_map_out_file = open("feature_map_data/class_({})_fmap.pt".format(args.class_index), "wb+")
 state = {k: v for k, v in args._get_kwargs()}
 
 # Use CUDA
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_id
-use_cuda = torch.cuda.is_available()
+use_cuda = False # torch.cuda.is_available()
 
 # Random seed
 if args.manualSeed is None:
@@ -137,7 +144,11 @@ def main():
     if not os.path.isdir(args.checkpoint):
         mkdir_p(args.checkpoint)
 
-    trainloader = dataset.loader(args.class_index, batch_size=1000, activations=True)
+    if args.grouped:
+        activation_list = args.grouped
+    else:
+        activation_list = [args.class_index]
+    trainloader = dataset.loader(args.class_index, batch_size=1000, activations= activation_list)
 
     cudnn.benchmark = True
     criterion = nn.CrossEntropyLoss()
@@ -146,9 +157,13 @@ def main():
     assert os.path.isfile(args.resume), 'Error: no checkpoint directory found!'
     args.checkpoint = os.path.dirname(args.resume)
     checkpoint = torch.load(args.resume)
-    model = models.__dict__[args.arch](dataset=args.dataset, depth=args.depth, cfg=checkpoint['cfg'])
-    model.load_state_dict(checkpoint['state_dict'], strict=False)
-    model = torch.nn.DataParallel(model).cuda()    
+    if args.pruned:
+        config = None
+    else:
+        config = checkpoint['cfg'] 
+    model = models.__dict__[args.arch](dataset=args.dataset, depth=19, cfg=config)
+    # model = torch.nn.DataParallel(model).cuda()     
+    model.load_state_dict(checkpoint['state_dict'])
     print('\nMake a test run to generate activations. \n Using training set.\n')
     test_loss, test_acc = test(trainloader, model, criterion, start_epoch, use_cuda)
 

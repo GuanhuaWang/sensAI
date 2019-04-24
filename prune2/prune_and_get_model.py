@@ -18,7 +18,15 @@ parser.add_argument('-r', '--resume', default='', type=str, help='The path to th
 parser.add_argument('-s', '--save', default='./pruned_models', type=str, help='The path to store the pruned models')
 args = parser.parse_args()
 
-num_classes = 10
+
+import glob
+import re
+
+path = args.prune_candidates
+file_names = [f for f in glob.glob(path + "*.npy", recursive=False)]
+group_id_list = [re.search('\(([^)]+)', f_name).group(1) for f_name in file_names]
+
+num_classes = 10 # len(group_id_list)
 
 def update_list(l):
     for i in range(len(l)):
@@ -30,11 +38,11 @@ def main():
     pathlib.Path(model_save_directory).mkdir(parents=True, exist_ok=True)
     
     # for each class
-    for i in range(10):
-        print('Pruning class {}'.format(i))
+    for group_id, file_name in zip(group_id_list, file_names):
+        print('Pruning classes {}'.format(group_id))
         
         # load pruning candidates
-        candidates = np.load(open(os.path.join(args.prune_candidates, 'class_{}_apoz_layer_thresholds.npy'.format(i)), 'rb')).tolist()
+        candidates =  np.load(open(file_name, 'rb')).tolist()
 
         # load checkpoints
         checkpoint = torch.load(os.path.join(args.resume, 'checkpoint.pth.tar'))
@@ -52,8 +60,9 @@ def main():
                 update_list(filters_to_remove)
                 
         # save the pruned model
-        model = prune_last_fc_layer(model, i)
-        pruned_model_name = args.arch + '_{}'.format(i) + '_pruned_model.pth'
+        group_indices = [int(id) for id in group_id.split("_")]
+        model = prune_last_fc_layer(model, group_indices)
+        pruned_model_name = args.arch + '_({})'.format(group_id) + '_pruned_model.pth'
         torch.save(model, os.path.join(model_save_directory, pruned_model_name))
 
     print('Pruned model saved at', model_save_directory)

@@ -25,7 +25,8 @@ from utils import Bar, Logger, AverageMeter, accuracy, mkdir_p, savefig
 from torch.utils.data import Dataset, DataLoader
 
 import dataset
-
+import glob
+import re
 
 class MyTestDataset(Dataset):
     def __init__(self):
@@ -80,11 +81,11 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
 #Device options
 parser.add_argument('--gpu-id', default='0', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
-parser.add_argument('--pruned', action='store_true', help='whether testing pruned models')
+parser.add_argument('--pruned', default=False, action='store_true', help='whether testing pruned models')
 parser.add_argument('--binary', action='store_true', help='whether to use binary testing')
 parser.add_argument('--prune-test', action='store_true', help='Set to true to prune according to test set ')
-parser.add_argument('--refined', default=False, action='store_true', help='Set to true to prune according to test set ')
-
+parser.add_argument('--refined', default=False, action='store_true', help='Set to true to retrain pruned model ')
+parser.add_argument('--grouped', default=False, action='store_true', help='Set to true to evaluate for grouped models')
 args = parser.parse_args()
 state = {k: v for k, v in args._get_kwargs()}
 
@@ -144,7 +145,7 @@ def main():
     # trainloader = data.DataLoader(trainset, batch_size=args.train_batch, shuffle=True, num_workers=args.workers)
 
     testset = MyTestDataset()
-    testloader = data.DataLoader(testset, batch_size=args.test_batch, shuffle=False, num_workers=args.workers)
+    testloader = data.DataLoader(testset, batch_size=1, shuffle=True, num_workers=args.workers)
 
     cudnn.benchmark = True
     criterion = nn.CrossEntropyLoss()
@@ -174,8 +175,30 @@ def main():
                     print('Binary model for Class %i Total params: %.2fM' % (i ,sum(p.numel() for p in model.parameters())/1000000.0))
                     model_list.append(model)
             test_acc = test_list(testloader, model_list, criterion, start_epoch, use_cuda)
+        if args.grouped:
+            model_list = []
+            args.checkpoint = os.path.dirname(args.resume)
+            file_names = [f for f in glob.glob(args.resume + "*.pth", recursive=False)]
+            print(file_names)
+            group_id_list = [re.search('\(([^)]+)', f_name).group(1) for f_name in file_names]
+            permutation_indices = [int(c) for c in "".join(group_id_list).replace("_","")]
+            permutation_indices = torch.eye(10)[permutation_indices].cuda()
+            for group_id, file_name in zip(group_id_list, file_names):
+                model = models.__dict__[args.arch](dataset=args.dataset, depth=16)
+                model = torch.load(file_name)
+                model = torch.nn.DataParallel(model).cuda()
+                print('Grouped model for Class {} Total params: {:2f}M'.format(group_id ,sum(p.numel() for p in model.parameters())/1000000.0))
+                model_list.append(model)
+            test_acc = test_list(testloader, model_list, criterion, start_epoch, use_cuda, permutation_indices)
 
-def test_list(testloader, model_list, criterion, epoch, use_cuda):
+"""
+            if args.pruned:
+                pass
+            else:
+                for 
+"""         
+
+def test_list(testloader, model_list, criterion, epoch, use_cuda, p_indices):
     global best_acc
 
     batch_time = AverageMeter()
@@ -191,6 +214,7 @@ def test_list(testloader, model_list, criterion, epoch, use_cuda):
 
     end = time.time()
     bar = Bar('Processing', max=len(testloader))
+    # pdb.set_trace()
     for batch_idx, (inputs, targets) in enumerate(testloader):
         # measure data loading time
         data_time.update(time.time() - end)
@@ -199,16 +223,21 @@ def test_list(testloader, model_list, criterion, epoch, use_cuda):
             inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = torch.autograd.Variable(inputs, volatile=True), torch.autograd.Variable(targets)
 
-        output_list = []
+        output_list = torch.Tensor().cuda()
         if args.pruned:
             for model_idx, model in enumerate(model_list):
                 output_current = model(inputs)[:, 0].unsqueeze(1)
-                output_list.append(output_current)
+                output_list = torch.cat((output_list, output_current), 1)
         else:
-            for model in model_list:
-                output_current = model(inputs)[:, 0].unsqueeze(1)
-                output_list.append(output_current)
-        outputs = torch.cat(output_list, 1)
+            for idx, model in enumerate(model_list):
+                output = model(inputs)[:,:]
+                output_list = torch.cat((output_list, output), 1)
+            output_list = torch.mm(output_list, p_indices)
+               
+        outputs = output_list
+        # print(outputs[:])
+        # print(targets[:])
+        # input()
         loss = criterion(outputs, targets)
 #        pdb.set_trace()
         # measure accuracy and record loss

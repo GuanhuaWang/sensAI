@@ -12,9 +12,13 @@ from PIL import Image
 import glob
 import os
 from cifar10class import *
-
-
-def loader(class_index, batch_size=64, num_workers=2, pin_memory=True, activations = False):
+import random
+import math 
+def loader(class_index, batch_size=64, num_workers=2, pin_memory=True, activations = None):
+    """
+    Modified version of the training set loader. If activations is specified, generates samples from
+    each class within the activations list
+    """
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
     transform_train = transforms.Compose([
@@ -25,9 +29,13 @@ def loader(class_index, batch_size=64, num_workers=2, pin_memory=True, activatio
     ])
     trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
     if activations:
-        samples = [get_class_i(x_train, y_train, class_index)]
+        samples = []
+        for class_idx in activations:
+             samples.extend(random.sample(get_class_i(x_train, y_train, class_idx), math.ceil(1000 / len(activations))))
+        samples = [samples]
     else:
-        samples = [get_random_images(x_train, y_train, class_index), get_class_i(x_train, y_train, class_index)]
+        samples = [get_random_images(x_train, y_train, class_index)*9, \
+                   get_class_i(x_train, y_train, class_index)*9]
     # cat/random single classifier
     cat_dog_trainset = \
         DatasetMaker(
@@ -43,7 +51,7 @@ def loader(class_index, batch_size=64, num_workers=2, pin_memory=True, activatio
 #                                 normalize,
 #                             ])),
         batch_size=batch_size,
-        shuffle=True,
+        shuffle = True if activations == None else False ,
         num_workers=num_workers,
         pin_memory=pin_memory)
 
