@@ -1,13 +1,14 @@
-CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs 1 --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_0_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_0_pruned_model --train-batch 64 --class-index 0
-CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs 1 --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_1_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_1_pruned_model --train-batch 64 --class-index 1
-CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs 1 --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_2_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_2_pruned_model --train-batch 64 --class-index 2
-CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs 1 --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_3_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_3_pruned_model --train-batch 64 --class-index 3
-CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs 1 --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_4_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_4_pruned_model --train-batch 64 --class-index 4
-CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs 1 --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_5_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_5_pruned_model --train-batch 64 --class-index 5
-CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs 1 --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_6_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_6_pruned_model --train-batch 64 --class-index 6
-CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs 1 --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_7_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_7_pruned_model --train-batch 64 --class-index 7
-CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs 1 --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_8_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_8_pruned_model --train-batch 64 --class-index 8
-CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs 1 --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_9_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_9_pruned_model --train-batch 64 --class-index 9
+EPOCHS=40
+CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs ${EPOCHS} --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_0_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_0_pruned_model --train-batch 64 --class-index 0
+CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs ${EPOCHS}  --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_1_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_1_pruned_model --train-batch 64 --class-index 1
+CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs ${EPOCHS} --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_2_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_2_pruned_model --train-batch 64 --class-index 2
+CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs ${EPOCHS}  --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_3_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_3_pruned_model --train-batch 64 --class-index 3
+CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs ${EPOCHS}  --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_4_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_4_pruned_model --train-batch 64 --class-index 4
+CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs ${EPOCHS}  --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_5_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_5_pruned_model --train-batch 64 --class-index 5
+CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs ${EPOCHS} --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_6_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_6_pruned_model --train-batch 64 --class-index 6
+CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs ${EPOCHS} --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_7_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_7_pruned_model --train-batch 64 --class-index 7
+CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs ${EPOCHS} --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_8_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_8_pruned_model --train-batch 64 --class-index 8
+CUDA_VISIBLE_DEVICES=0 python3 cifar_binary.py --pruned -a vgg --epochs ${EPOCHS} --schedule 21 32 --gamma 0.1 --resume ./pruned2_models/vgg/vgg_9_pruned_model.pth --checkpoint ./pruned2_retrain/vgg/vgg_9_pruned_model --train-batch 64 --class-index 9
 
 
 

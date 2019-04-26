@@ -101,7 +101,7 @@ if use_cuda:
     torch.cuda.manual_seed_all(args.manualSeed)
 
 best_acc = 0  # best test accuracy
-
+model_prefix = None 
 def main():
     global best_acc
 
@@ -157,7 +157,8 @@ def main():
         print("==> Loading pruned model with some existing weights '{}'".format(args.arch))
         model = torch.load(args.resume)
         group_id = re.search('\(([^)]+)', args.resume).group(1)
-        args.checkpoint = args.checkpoint + args.arch + '_(' + group_id + ')_' + 'pruned_group_model'
+        # checkpoint_name = args.arch + '_(' + group_id + ')_' + 'pruned_group_model' 
+        model_prefix = args.checkpoint + args.arch + '_(' + group_id + ')_' + 'pruned_group_model'
         class_indices = [int(c) for c in group_id.replace("_","")]
  
     start_epoch = args.start_epoch  # start from epoch 0 or last checkpoint epoch
@@ -167,7 +168,7 @@ def main():
        
     if args.dataset == 'cifar10':
         # dataloader = datasets.CIFAR10
-        trainloader = dataset.loader(group = class_indices)
+        trainloader = dataset.loader(group = class_indices, multiplier = 8)
         testloader = dataset.test_loader(group = class_indices)
         num_classes = 2
     else:
@@ -194,9 +195,9 @@ def main():
         start_epoch = checkpoint['epoch']
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
-        logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
+        logger = Logger(model_prefix + '_log.txt', title=title, resume=True)
     else:
-        logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
+        logger = Logger(model_prefix + '_log.txt', title=title)
         logger.set_names(['Learning Rate', 'Train Loss', 'Valid Loss', 'Train Acc.', 'Valid Acc.'])
 
 
@@ -221,21 +222,12 @@ def main():
         # save model
         is_best = test_acc > best_acc
         best_acc = max(test_acc, best_acc)
-        if not args.pruned:
-            save_checkpoint({
-                    'epoch': epoch + 1,
-                    'state_dict': model.state_dict(),
-                    'acc': test_acc,
-                    'best_acc': best_acc,
-                    'optimizer' : optimizer.state_dict(),
-                }, is_best, checkpoint=args.checkpoint)
-        else:
-            if is_best:
-                torch.save(model, os.path.join(args.checkpoint, 'model.pth'))
+        if is_best:
+            torch.save(model, model_prefix + '.pth')
 
     logger.close()
     logger.plot()
-    savefig(os.path.join(args.checkpoint, 'log.eps'))
+    savefig(model_prefix + '_log.eps')
 
     print('Best acc:')
     print(best_acc)
@@ -371,7 +363,7 @@ def save_checkpoint(state, is_best, checkpoint='checkpoint', filename='checkpoin
     filepath = os.path.join(checkpoint, filename)
     torch.save(state, filepath)
     if is_best:
-        shutil.copyfile(filepath, os.path.join(checkpoint, 'model_best.pth.tar'))
+        shutil.copyfile(filepath, model_prefix + '_model_best.pth.tar')
 
 def adjust_learning_rate(optimizer, epoch):
     global state
