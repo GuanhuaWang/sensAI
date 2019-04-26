@@ -177,14 +177,14 @@ def prune_last_fc_layer(model, class_indices):
 
     new_linear_layer = \
         torch.nn.Linear(int(old_linear_layer.in_features), 
-            len(class_indices))
+            len(class_indices) + 1)
     
     old_weights = old_linear_layer.weight.data.cpu().numpy()
     new_weights = new_linear_layer.weight.data.cpu().numpy()        
 
-    new_weights[:, :] = old_weights[class_indices, :]
+    new_weights[1:, :] = old_weights[class_indices, :]
     
-    new_linear_layer.bias.data = torch.from_numpy(np.asarray(old_linear_layer.bias.data.cpu().numpy()[class_indices])).cuda()
+    new_linear_layer.bias.data[1:] = torch.from_numpy(np.asarray(old_linear_layer.bias.data.cpu().numpy()[class_indices])).cuda()
 
     new_linear_layer.weight.data = torch.from_numpy(new_weights).cuda()
 
