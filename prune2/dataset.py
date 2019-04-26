@@ -34,9 +34,12 @@ def loader(class_index = None, batch_size=64, num_workers=2, pin_memory=True, gr
              samples.extend(random.sample(get_class_i(x_train, y_train, class_idx), math.ceil(1000 / len(group))))
         samples = [samples]
     elif group:
-        samples = [get_random_images(x_train, y_train, group) * multiplier]
+        samples = [get_random_images(x_train, y_train, *group)]
         for class_idx in group:
             samples.append(get_class_i(x_train, y_train, class_idx) * multiplier)
+        for x in samples:
+            print(len(x))
+        input()
     else:
         samples = [get_random_images(x_train, y_train, class_index), get_class_i(x_train, y_train, class_index)]
  
@@ -54,8 +57,7 @@ def test_loader(class_index = None, batch_size=64, num_workers=2, pin_memory=Tru
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
     if group:
-        print(group)
-        samples = [get_random_images(x_test, y_test, group)]
+        samples = [get_random_images(x_test, y_test, *group)]
         for class_idx in group:
             samples.append(get_class_i(x_test, y_test, class_idx))
     else:

@@ -107,9 +107,9 @@ def get_random_images(x, y, *indices):
     # Exclude images in class i
     x_i = [x[j] for j in whole if j not in exclude_pos[:,0]]
     # Debug info
-    x_r_i = x_i[:exclude_pos.size]
+    # x_r_i = x_i[:exclude_pos.size]
 #    print("random_x_i size ", x_r_i)
-    return x_r_i
+    return x_i
 
 class DatasetMaker(Dataset):
     def __init__(self, datasets, transformFunc = transform_no_aug):

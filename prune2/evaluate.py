@@ -178,16 +178,18 @@ def main():
         if args.grouped:
             model_list = []
             args.checkpoint = os.path.dirname(args.resume)
+            print(args.resume)
             file_names = [f for f in glob.glob(args.resume + "*.pth", recursive=False)]
             print(file_names)
             group_id_list = [re.search('\(([^)]+)', f_name).group(1) for f_name in file_names]
+            print(group_id_list)
             permutation_indices = [int(c) for c in "".join(group_id_list).replace("_","")]
             permutation_indices = torch.eye(10)[permutation_indices].cuda()
             for group_id, file_name in zip(group_id_list, file_names):
                 model = models.__dict__[args.arch](dataset=args.dataset, depth=16)
                 model = torch.load(file_name)
                 model = torch.nn.DataParallel(model).cuda()
-                print(model)
+                # print(model)
                 print('Grouped model for Class {} Total params: {:2f}M'.format(group_id ,sum(p.numel() for p in model.parameters())/1000000.0))
                 model_list.append(model)
             test_acc = test_list(testloader, model_list, criterion, start_epoch, use_cuda, permutation_indices)
@@ -225,16 +227,27 @@ def test_list(testloader, model_list, criterion, epoch, use_cuda, p_indices):
         inputs, targets = torch.autograd.Variable(inputs, volatile=True), torch.autograd.Variable(targets)
 
         output_list = torch.Tensor().cuda()
+        neg_list = []
         if args.pruned:
             for model_idx, model in enumerate(model_list):
                 output_current = model(inputs)[:, 1].unsqueeze(1)
                 output_list = torch.cat((output_list, output_current), 1)
         else:
             for idx, model in enumerate(model_list):
-                output = model(inputs)[:,1:]
+                output = nn.Softmax(dim=1)(model(inputs))[:,1:]
                 output_list = torch.cat((output_list, output), 1)
+            # print(output_list[0, :])
+            # print(targets[0])
+            # print(group_id_list)
+            # ['2_3', '8_9', '0_1', '6_7', '4_5']
+            # input()
+            # neg_list = torch.mm(torch.Tensor(neg_list).view(-1).cuda(), p_indices)
             output_list = torch.mm(output_list, p_indices)
-               
+            # print("Negative List: ", neg_list)
+            # print(targets[0], "   ", output_list[0, :])
+            # print(neg_list[0])
+            # input()
+  
         outputs = output_list
         loss = criterion(outputs, targets)
 #        pdb.set_trace()
