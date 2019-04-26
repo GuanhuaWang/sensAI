@@ -148,7 +148,7 @@ def main():
         activation_list = args.grouped
     else:
         activation_list = [args.class_index]
-    trainloader = dataset.loader(args.class_index, batch_size=1000, activations= activation_list)
+    trainloader = dataset.loader(args.class_index, batch_size=1000, group = activation_list, activations=True)
 
     cudnn.benchmark = True
     criterion = nn.CrossEntropyLoss()
@@ -240,3 +240,4 @@ def adjust_learning_rate(optimizer, epoch):
 
 if __name__ == '__main__':
     main()
+

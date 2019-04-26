@@ -105,7 +105,7 @@ if use_cuda:
     torch.cuda.manual_seed_all(args.manualSeed)
 
 best_acc = 0  # best test accuracy
-
+num_classes = 2
 torch.set_printoptions(threshold=10000)
 
 def main():
@@ -140,12 +140,12 @@ def main():
     if args.binary:
         num_classes = 2
 
-
+    
     # trainset = MyTrainDataset()
     # trainloader = data.DataLoader(trainset, batch_size=args.train_batch, shuffle=True, num_workers=args.workers)
 
     testset = MyTestDataset()
-    testloader = data.DataLoader(testset, batch_size=1, shuffle=True, num_workers=args.workers)
+    testloader = data.DataLoader(testset, batch_size=100, shuffle=True, num_workers=args.workers)
 
     cudnn.benchmark = True
     criterion = nn.CrossEntropyLoss()
@@ -187,6 +187,7 @@ def main():
                 model = models.__dict__[args.arch](dataset=args.dataset, depth=16)
                 model = torch.load(file_name)
                 model = torch.nn.DataParallel(model).cuda()
+                print(model)
                 print('Grouped model for Class {} Total params: {:2f}M'.format(group_id ,sum(p.numel() for p in model.parameters())/1000000.0))
                 model_list.append(model)
             test_acc = test_list(testloader, model_list, criterion, start_epoch, use_cuda, permutation_indices)
@@ -226,18 +227,15 @@ def test_list(testloader, model_list, criterion, epoch, use_cuda, p_indices):
         output_list = torch.Tensor().cuda()
         if args.pruned:
             for model_idx, model in enumerate(model_list):
-                output_current = model(inputs)[:, 0].unsqueeze(1)
+                output_current = model(inputs)[:, 1].unsqueeze(1)
                 output_list = torch.cat((output_list, output_current), 1)
         else:
             for idx, model in enumerate(model_list):
-                output = model(inputs)[:,:]
+                output = model(inputs)[:,1:]
                 output_list = torch.cat((output_list, output), 1)
             output_list = torch.mm(output_list, p_indices)
                
         outputs = output_list
-        # print(outputs[:])
-        # print(targets[:])
-        # input()
         loss = criterion(outputs, targets)
 #        pdb.set_trace()
         # measure accuracy and record loss

@@ -91,24 +91,23 @@ def get_represent_neg_class_i(x, y, i):
     return x_i
 
 # Get random images excluding images in the target class i
-def get_random_images(x, y, i):
-    
+def get_random_images(x, y, *indices):
+ 
     # Convert y to np array
     y = np.array(y)
     # Locate position of labels that equal to i
-    pos_i = np.argwhere(y == i)
+    exclude_pos = np.concatenate([np.argwhere(y == i) for i in indices]) 
     # Debug info
-    print("class ", i, " size is ", pos_i.size)
+    print("group "+ str(indices) + " size is ", exclude_pos.size)
 
     # Shuffle total number of train images labels
     whole = np.arange(y.size)
     np.random.shuffle(whole)
 
-    
     # Exclude images in class i
-    x_i = [x[j] for j in whole if j not in pos_i[:,0]]
+    x_i = [x[j] for j in whole if j not in exclude_pos[:,0]]
     # Debug info
-    x_r_i = x_i[:pos_i.size]
+    x_r_i = x_i[:exclude_pos.size]
 #    print("random_x_i size ", x_r_i)
     return x_r_i
 
