@@ -41,7 +41,7 @@ parser.add_argument('--train-batch', default=128, type=int, metavar='N',
                     help='train batchsize')
 parser.add_argument('--test-batch', default=100, type=int, metavar='N',
                     help='test batchsize')
-parser.add_argument('--lr', '--learning-rate', default=0.01, type=float,
+parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate')
 parser.add_argument('--drop', '--dropout', default=0, type=float,
                     metavar='Dropout', help='Dropout ratio')
@@ -80,7 +80,7 @@ parser.add_argument('--gpu-id', default='0', type=str,
 parser.add_argument('--class-index', default=0, type=int,
                     help='class index for binary cls')
 parser.add_argument('--pruned', default=False, action='store_true', help='whether testing pruned models')
-
+parser.add_argument('--bce', default=False, action='store_true', help='Use binary cross entropy loss')
 
 args = parser.parse_args()
 state = {k: v for k, v in args._get_kwargs()}
@@ -156,6 +156,7 @@ def main():
     else:
         print("==> Loading pruned model with some existing weights '{}'".format(args.arch))
         model = torch.load(args.resume)
+        # model = torch.nn.DataParallel(model).cuda()
         group_id = re.search('\(([^)]+)', args.resume).group(1)
         # checkpoint_name = args.arch + '_(' + group_id + ')_' + 'pruned_group_model' 
         model_prefix = args.checkpoint + args.arch + '_(' + group_id + ')_' + 'pruned_group_model'
@@ -178,8 +179,11 @@ def main():
     model = torch.nn.DataParallel(model).cuda()
     cudnn.benchmark = True
     print('    Total params: %.2fM' % (sum(p.numel() for p in model.parameters())/1000000.0))
-  
-    criterion = nn.CrossEntropyLoss()
+ 
+    if args.bce:
+        criterion = nn.BCEWithLogitsLoss()
+    else:  
+        criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
     # Resume
@@ -216,6 +220,9 @@ def main():
         train_loss, train_acc = train(trainloader, model, criterion, optimizer, epoch, use_cuda)
         test_loss, test_acc = test(testloader, model, criterion, epoch, use_cuda)
 
+
+        print('\nEpoch: [%d | %d] LR: %f  Test Acc: %f     Train Acc %f' % (epoch + 1, args.epochs, state['lr'], test_acc, train_acc))
+        
         # append logger file
         logger.append([state['lr'], train_loss, test_loss, train_acc, test_acc])
 
@@ -253,23 +260,30 @@ def train(trainloader, model, criterion, optimizer, epoch, use_cuda):
 
         # compute output
         outputs = model(inputs)
-        # if args.pruned:
-        #     loss = criterion(outputs.flatten(), targets.float())
-        # else:
-        loss = criterion(outputs, targets)
+        if args.bce:
+            loss = 0.0
+            for i in range(outputs.shape[1]):
+                out = (outputs[:, i].flatten())
+                targ = targets.eq(i+1).float()
+                # print(out)
+                # print(targ)
+                loss_update =  criterion(outputs[:, i].flatten(), targets.eq(i+1).float())
+                loss += loss_update
+        else:
+            loss = criterion(outputs, targets)
 
-
+        # input()
         # measure accuracy and record loss
-        # if not args.pruned:
-        prec1, prec5 = accuracy(outputs.data, targets.data, topk=(1, 2))
-        # else:
-        #    acc = accuracy_binary(outputs.data, targets.data)
+        if not args.bce:
+            prec1, prec5 = accuracy(outputs.data, targets.data, topk=(1, 2))
+        else:
+            prec1 = max([ accuracy_binary(outputs.data[:,i], targets.data) for i in range(outputs.shape[1])])
         losses.update(loss.data[0], inputs.size(0))
-        # if not args.pruned:
-        #     top1.update(prec1[0], inputs.size(0))
-        #     top5.update(prec5[0], inputs.size(0))
-        # else:
-        top1.update(prec1, inputs.size(0))
+        if not args.pruned:
+            top1.update(prec1[0], inputs.size(0))
+            top5.update(prec5[0], inputs.size(0))
+        else:
+            top1.update(prec1, inputs.size(0))
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
@@ -320,24 +334,27 @@ def test(testloader, model, criterion, epoch, use_cuda):
 
         # compute output
         outputs = model(inputs)
-        # if args.pruned:
+        if args.bce:
             # print('outputs', outputs[0])
             # print('target', targets[0])
+            loss = 0.0
+            for i in range(outputs.shape[1]):
+                loss += criterion(outputs[:, i].flatten(), targets.eq(i+1).float())
         #    loss = criterion(outputs.flatten(), targets.float())
-        #else:
-        loss = criterion(outputs, targets)
+        else:
+            loss = criterion(outputs, targets)
 
         # measure accuracy and record loss
-        # if not args.pruned:
-        prec1, prec5 = accuracy(outputs.data, targets.data, topk=(1, 2))
-        # else:
-        #    acc = accuracy_binary(outputs.data, targets.data)
+        if not args.bce:
+            prec1, prec5 = accuracy(outputs.data, targets.data, topk=(1, 2))
+        else:
+            prec1 = max( [accuracy_binary(outputs.data[:, i], targets.data) for i in range(outputs.shape[1])])
         losses.update(loss.data[0], inputs.size(0))
-        # if not args.pruned:
-        top1.update(prec1[0], inputs.size(0))
-        top5.update(prec5[0], inputs.size(0))
-        # else:
-        #    top1.update(acc, inputs.size(0))
+        if not args.bce:
+            top1.update(prec1[0], inputs.size(0))
+            top5.update(prec5[0], inputs.size(0))
+        else:
+            top1.update(prec1, inputs.size(0))
 
         # measure elapsed time
         batch_time.update(time.time() - end)

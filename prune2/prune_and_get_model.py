@@ -16,6 +16,7 @@ parser.add_argument('-c', '--prune-candidates', default="./prune_candidate_logs"
 parser.add_argument('-a', '--arch', default='vgg19_bn', type=str, help='The architecture of the trained model')
 parser.add_argument('-r', '--resume', default='', type=str, help='The path to the checkpoints')
 parser.add_argument('-s', '--save', default='./pruned_models', type=str, help='The path to store the pruned models')
+parser.add_argument('-bce', '--bce', default=False, type=bool, help='Prune according to binary cross entropy loss, i.e. no additional negative output for classifer')
 args = parser.parse_args()
 
 
@@ -61,7 +62,7 @@ def main():
                 
         # save the pruned model
         group_indices = [int(id) for id in group_id.split("_")]
-        model = prune_last_fc_layer(model, group_indices)
+        model = prune_last_fc_layer(model, group_indices, use_bce = args.bce)
         pruned_model_name = args.arch + '_({})'.format(group_id) + '_pruned_model.pth'
         torch.save(model, os.path.join(model_save_directory, pruned_model_name))
 
