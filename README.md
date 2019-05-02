@@ -9,3 +9,13 @@ To prune (dir: ~/zihao/rona_experiments/limo/vgg-pruning/)
 To evaluate binary classifiers (dir: ~/zihao/rona_experiments/pytorch-classification/)
 
 `python3 evaluate.py -a vgg19_bn --test-batch 100 --resume ~/zihao/rona_experiments/limo/vgg-pruning/pruned_models_90per/vgg19_bn/ --evaluate --binary --pruned`
+
+## Further exploration
+
+One interesting question that might be an interesting part of the paper story
+Is whether the grouping matters.
+Comparing random vs heuristic? (Using most similar / least similar, according to the heatmap statistics in the poster)
+
+Random is more general. Heuristic is useful for reducing grouped model size (which I think we can do a follow-up paper with some system optimizations)
+
+Might take time to collect enough sample points to make a discrimination.
