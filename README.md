@@ -12,7 +12,7 @@ To evaluate binary classifiers (dir: ~/zihao/rona_experiments/pytorch-classifica
 
 ## Further exploration
 
-One interesting question that might be an interesting part of the paper story
+One interesting question that might be an interesting,
 Is whether the grouping matters.
 Comparing random vs heuristic? (Using most similar / least similar, according to the heatmap statistics in the poster)
 
