@@ -12,6 +12,8 @@ To evaluate binary classifiers (dir: ~/zihao/rona_experiments/pytorch-classifica
 
 ## Further exploration
 
+### Binary model grouping
+
 One interesting question that might be an interesting,
 Is whether the grouping matters.
 Comparing random vs heuristic? (Using most similar / least similar, according to the heatmap statistics in the poster)
@@ -19,3 +21,9 @@ Comparing random vs heuristic? (Using most similar / least similar, according to
 Random is more general. Heuristic is useful for reducing grouped model size (which I think we can do a follow-up paper with some system optimizations)
 
 Might take time to collect enough sample points to make a discrimination.
+
+### when to kill a binary retrain process
+
+Some binary models converge faster than others, set threshold to kill converged models in order to save compute resources.
+
+### DataFrame for irregular binary models
