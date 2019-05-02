@@ -20,6 +20,7 @@ parser.add_argument('-bce', '--bce', default=False, type=bool, help='Prune accor
 args = parser.parse_args()
 
 
+
 import glob
 import re
 
@@ -46,11 +47,15 @@ def main():
         candidates =  np.load(open(file_name, 'rb')).tolist()
 
         # load checkpoints
-        checkpoint = torch.load(os.path.join(args.resume, 'checkpoint.pth.tar'))
-        model = models.__dict__[args.arch](dataset='cifar10', depth=16, cfg=checkpoint['cfg'])
+        checkpoint = torch.load(args.resume)
+        # model = models.__dict__[args.arch](dataset='cifar10', depth=16, cfg=checkpoint['cfg'])
+        model = models.__dict__[args.arch](num_classes=num_classes)
+        model = torch.nn.DataParallel(model).cuda()
         model.load_state_dict(checkpoint['state_dict'])
 
-        conv_indices = [idx for idx, (n, p) in enumerate(model.feature._modules.items()) if isinstance(p, nn.modules.conv.Conv2d)]
+        model = model.module
+
+        conv_indices = [idx for idx, (n, p) in enumerate(model.features._modules.items()) if isinstance(p, nn.modules.conv.Conv2d)]
         for layer_index, filter_list in zip(conv_indices, candidates):
             filters_to_remove = list(filter_list)
             sorted(filters_to_remove)

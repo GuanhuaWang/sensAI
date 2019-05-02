@@ -49,7 +49,7 @@ def get_class_i(x, y, i):
     # Convert the result into a 1-D list
     pos_i = list(pos_i[:,0])
     # Collect all data that match the desired label
-    print("positive images: %i" %(len(pos_i)))
+    print("positive images: %i from class i" %(len(pos_i)), i)
     x_i = [x[j] for j in pos_i]
     # Debug info
     # print("x_i ", x_i)
@@ -109,6 +109,7 @@ def get_random_images(x, y, *indices):
     # Debug info
     # x_r_i = x_i[:exclude_pos.size]
 #    print("random_x_i size ", x_r_i)
+    print("Number of neg images: ", len(x_i))
     return x_i
 
 class DatasetMaker(Dataset):

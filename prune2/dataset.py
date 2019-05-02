@@ -31,15 +31,12 @@ def loader(class_index = None, batch_size=64, num_workers=2, pin_memory=True, gr
     if activations and group:
         samples = []
         for class_idx in group:
-             samples.extend(random.sample(get_class_i(x_train, y_train, class_idx), math.ceil(1000 / len(group))))
+             samples.extend(random.sample(get_class_i(x_train, y_train, class_idx), 2000))
         samples = [samples]
     elif group:
         samples = [get_random_images(x_train, y_train, *group)]
         for class_idx in group:
             samples.append(get_class_i(x_train, y_train, class_idx) * multiplier)
-        for x in samples:
-            print(len(x))
-        input()
     else:
         samples = [get_random_images(x_train, y_train, class_index), get_class_i(x_train, y_train, class_index)]
  
@@ -47,7 +44,7 @@ def loader(class_index = None, batch_size=64, num_workers=2, pin_memory=True, gr
     
     return data.DataLoader(training_data,
         batch_size=batch_size,
-        shuffle = True if activations == False else False,
+        shuffle = True, 
         num_workers=num_workers,
         pin_memory=pin_memory)
 

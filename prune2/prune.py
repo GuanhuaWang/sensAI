@@ -11,12 +11,12 @@ def replace_layers(model, i, indexes, layers):
     return model[i]
 
 def prune_vgg16_conv_layer(model, layer_index, filter_index, use_batch_norm=False):
-    _, conv = list(model.feature._modules.items())[layer_index]
+    _, conv = list(model.features._modules.items())[layer_index]
     next_conv = None
     offset = 1
 
-    while layer_index + offset <  len(model.feature._modules.items()):
-        res =  list(model.feature._modules.items())[layer_index+offset]
+    while layer_index + offset <  len(model.features._modules.items()):
+        res =  list(model.features._modules.items())[layer_index+offset]
         if isinstance(res[1], torch.nn.modules.conv.Conv2d):
             next_name, next_conv = res
             break
@@ -46,7 +46,7 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index, use_batch_norm=Fals
         new_conv.bias.data = torch.from_numpy(bias).cuda()
 
     if use_batch_norm:
-        _, bn = list(model.feature._modules.items())[layer_index + 1]
+        _, bn = list(model.features._modules.items())[layer_index + 1]
         new_bn = torch.nn.BatchNorm2d(conv.out_channels - 1)
 
         old_weights = bn.weight.data.cpu().numpy()
@@ -102,18 +102,17 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index, use_batch_norm=Fals
 
     if not next_conv is None:
         features = torch.nn.Sequential(
-                *(replace_layers(model.feature, i, [layer_index, layer_index + 1, layer_index+offset], \
-                    [new_conv, new_bn, next_new_conv]) for i, _ in enumerate(model.feature)))
-        del model.feature
+                *(replace_layers(model.features, i, [layer_index, layer_index + 1, layer_index+offset], \
+                    [new_conv, new_bn, next_new_conv]) for i, _ in enumerate(model.features)))
+        del model.features
         del conv
 
-        model.feature = features
-
+        model.features = features
     else:
         #Prunning the last conv layer. This affects the first linear layer of the classifier.
-        model.feature = torch.nn.Sequential(
-                *(replace_layers(model.feature, i, [layer_index, layer_index+1], \
-                    [new_conv, new_bn]) for i, _ in enumerate(model.feature)))
+        model.features = torch.nn.Sequential(
+                *(replace_layers(model.features, i, [layer_index, layer_index+1], \
+                    [new_conv, new_bn]) for i, _ in enumerate(model.features)))
         layer_index = 0
         old_linear_layer = None
         if len(model.classifier._modules):
@@ -175,7 +174,7 @@ def prune_last_fc_layer(model, class_indices, use_bce=False):
     if old_linear_layer is None:
             raise BaseException("No linear layer found in classifier")
 
-    bce_offset = 1 if use_bce else 0 
+    bce_offset = 0 if use_bce else 1
     new_linear_layer = \
         torch.nn.Linear(int(old_linear_layer.in_features), 
             len(class_indices) + bce_offset)

@@ -25,10 +25,13 @@ from utils import Bar, Logger, AverageMeter, accuracy, mkdir_p, savefig
 from torch.utils.data import Dataset, DataLoader
 
 import dataset
-
+from apoz_policy import * 
 activations = []
 sizes = []
-
+running_scores_by_layer = [None for _ in range(16)]
+global layer_idx
+num_batches = 0
+num_classes = 10
 """
     1) Calculate squashed filter values
     2) Save feature map output into feature_map_out_file
@@ -41,7 +44,15 @@ sizes = []
                 layers_channels.append(torch.load(data_buffer))
 """
 def parse_activation(feature_map):
-    torch.save(feature_map, feature_map_out_file)
+    # torch.save(feature_map, feature_map_out_file)
+    global layer_idx
+    global running_scores_by_layer
+    apoz_score = apoz_scoring(feature_map).numpy()
+    if running_scores_by_layer[layer_idx] is None:
+        running_scores_by_layer[layer_idx] = apoz_score
+    else:
+        running_scores_by_layer[layer_idx] = np.add(running_scores_by_layer[layer_idx], apoz_score)
+    layer_idx = (layer_idx + 1) % 16
 """
     Apply a hook to RelU layer
 """
@@ -50,7 +61,8 @@ def hook(self, input, output):
        parse_activation(output.data)
 
 def apply_hook(m):
-   m.register_forward_hook(hook)
+   m.register_forward_hook(hook) 
+
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -114,6 +126,21 @@ parser.add_argument('--grouped', type=int, nargs='+', default=[],
 
 args = parser.parse_args()
 
+def generate_candidates():
+     global num_batches
+     group_id_string = ''.join(filter(lambda x: x.isdigit() or x == '_', str(args.grouped).replace(" ", "_")))
+     thresholds = [70] * 16
+     candidates_by_layer = []
+     for layer_idx, layer_scores in enumerate(running_scores_by_layer):
+         layer_scores *= 1/float(num_batches)
+         layer_scores = torch.Tensor(layer_scores)
+         candidates = [x[0] for x in layer_scores.gt(thresholds[layer_idx]).nonzero().tolist()]
+         candidates_by_layer.append(candidates)
+     print("Total candidates: {}".format(sum([len(l) for l in candidates_by_layer])))
+     np.save(open("prune_candidate_logs/class_({})_apoz_layer_thresholds.npy".format( group_id_string), "wb"), candidates_by_layer)
+     print(candidates_by_layer)
+
+
 if args.grouped:
     feature_map_out_file = open("./feature_map_data/class_({})_fmap.pt".\
                  format(''.join(filter(lambda x: x.isdigit() or x == '_', str(args.grouped).replace(" ", "_")))), "wb+")
@@ -161,15 +188,18 @@ def main():
         config = None
     else:
         config = checkpoint['cfg'] 
-    model = models.__dict__[args.arch](dataset=args.dataset, depth=19, cfg=config)
-    # model = torch.nn.DataParallel(model).cuda()     
+    # model = models.__dict__[args.arch](dataset=args.dataset, depth=19, cfg=config)
+    model = models.__dict__[args.arch](num_classes=num_classes)
+    model = torch.nn.DataParallel(model).cuda()     
     model.load_state_dict(checkpoint['state_dict'])
     print('\nMake a test run to generate activations. \n Using training set.\n')
     test_loss, test_acc = test(trainloader, model, criterion, start_epoch, use_cuda)
+    generate_candidates()
 
 def test(testloader, model, criterion, epoch, use_cuda):
     global best_acc
-
+    global layer_idx
+    global num_batches
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -186,17 +216,15 @@ def test(testloader, model, criterion, epoch, use_cuda):
     bar = Bar('Processing', max=len(testloader))
     for batch_idx, (inputs, targets) in enumerate(testloader):
         # measure data loading time
+        layer_idx = 0
+        num_batches += 1 
         data_time.update(time.time() - end)
 
-        if use_cuda:
-            inputs, targets = inputs.cuda(), targets.cuda()
+        
+        inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = torch.autograd.Variable(inputs, volatile=True), torch.autograd.Variable(targets)
 
-        #print('Batch idx {}'.format(batch_idx))
         outputs = model(inputs)
-        # We can exit here only need one batch (Remove this if we want all 5k)
-        # To avoid very large feature map files
-        return (0, 0)
         loss = criterion(outputs, targets)
 
         # measure accuracy and record loss

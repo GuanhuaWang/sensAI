@@ -16,10 +16,10 @@ def apoz_scoring(activation):
     activation = activation.cpu()
     if activation.dim() == 4:
         view_2d = activation.view(-1, activation.size(2) * activation.size(3))  # (batch*channels) x (h*w)
-        featuremap_apoz = view_2d.abs().gt(0.01).sum(dim=1).float() / (activation.size(2) * activation.size(3))  # (batch*channels) x 1
+        featuremap_apoz = view_2d.abs().gt(0.005).sum(dim=1).float() / (activation.size(2) * activation.size(3))  # (batch*channels) x 1
         featuremap_apoz_mat = featuremap_apoz.view(activation.size(0), activation.size(1))  # batch x channels
     elif activation.dim() == 2:
-        featuremap_apoz_mat = activation.abs().gt(0.01).sum(dim=1).float() / activation.size(1)  # batch x 1
+        featuremap_apoz_mat = activation.abs().gt(0.005).sum(dim=1).float() / activation.size(1)  # batch x 1
     else:
         raise ValueError("activation_channels_apoz: Unsupported shape: ".format(activation.shape))
     return 100 - featuremap_apoz_mat.mean(dim=0).mul(100).cpu()
@@ -55,7 +55,7 @@ def pruning_candidates(group_id, thresholds, file_name):
 if __name__ == '__main__':
 	candidates_across_classes = []
 	## Specificy threshold by layer
-	thresholds = [99] * 16
+	thresholds = [55] * 16
 	for group_id, file_name in zip(group_id_list, file_names):
 		group_candidates = pruning_candidates(group_id, thresholds, file_name)
 		np.save(open("prune_candidate_logs/class_({})_apoz_layer_thresholds.npy".format(group_id), "wb"), group_candidates)

@@ -41,7 +41,7 @@ parser.add_argument('--train-batch', default=128, type=int, metavar='N',
                     help='train batchsize')
 parser.add_argument('--test-batch', default=100, type=int, metavar='N',
                     help='test batchsize')
-parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
+parser.add_argument('--lr', '--learning-rate', default=0.01, type=float,
                     metavar='LR', help='initial learning rate')
 parser.add_argument('--drop', '--dropout', default=0, type=float,
                     metavar='Dropout', help='Dropout ratio')
@@ -156,7 +156,7 @@ def main():
     else:
         print("==> Loading pruned model with some existing weights '{}'".format(args.arch))
         model = torch.load(args.resume)
-        # model = torch.nn.DataParallel(model).cuda()
+        model = torch.nn.DataParallel(model).cuda()
         group_id = re.search('\(([^)]+)', args.resume).group(1)
         # checkpoint_name = args.arch + '_(' + group_id + ')_' + 'pruned_group_model' 
         model_prefix = args.checkpoint + args.arch + '_(' + group_id + ')_' + 'pruned_group_model'
@@ -177,6 +177,7 @@ def main():
         num_classes = 100
 
     model = torch.nn.DataParallel(model).cuda()
+    # model = model.cpu()
     cudnn.benchmark = True
     print('    Total params: %.2fM' % (sum(p.numel() for p in model.parameters())/1000000.0))
  
@@ -254,32 +255,32 @@ def train(trainloader, model, criterion, optimizer, epoch, use_cuda):
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         # measure data loading time
         data_time.update(time.time() - end)
+        
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda(async=True)
         inputs, targets = torch.autograd.Variable(inputs), torch.autograd.Variable(targets)
 
         # compute output
         outputs = model(inputs)
+   
         if args.bce:
             loss = 0.0
             for i in range(outputs.shape[1]):
                 out = (outputs[:, i].flatten())
                 targ = targets.eq(i+1).float()
-                # print(out)
-                # print(targ)
                 loss_update =  criterion(outputs[:, i].flatten(), targets.eq(i+1).float())
                 loss += loss_update
         else:
             loss = criterion(outputs, targets)
+       
 
-        # input()
         # measure accuracy and record loss
         if not args.bce:
             prec1, prec5 = accuracy(outputs.data, targets.data, topk=(1, 2))
         else:
             prec1 = max([ accuracy_binary(outputs.data[:,i], targets.data) for i in range(outputs.shape[1])])
         losses.update(loss.data[0], inputs.size(0))
-        if not args.pruned:
+        if not args.bce:
             top1.update(prec1[0], inputs.size(0))
             top5.update(prec5[0], inputs.size(0))
         else:
@@ -328,7 +329,7 @@ def test(testloader, model, criterion, epoch, use_cuda):
         # measure data loading time
         data_time.update(time.time() - end)
 
-        if use_cuda:
+        if use_cuda: 
             inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = torch.autograd.Variable(inputs, volatile=True), torch.autograd.Variable(targets)
 
