@@ -1,4 +1,5 @@
 """ining script for CIFAR-10/100
+        print('\nEpoch: [%d | %d] LR: %f' % (epoch + 1, args.epochs, state['lr']))
 Copyright (c) Wei YANG, 2017
 """
 from __future__ import print_function
@@ -156,6 +157,7 @@ def main():
     else:
         print("==> Loading pruned model with some existing weights '{}'".format(args.arch))
         model = torch.load(args.resume)
+        # model.cpu()
         model = torch.nn.DataParallel(model).cuda()
         group_id = re.search('\(([^)]+)', args.resume).group(1)
         # checkpoint_name = args.arch + '_(' + group_id + ')_' + 'pruned_group_model' 
@@ -268,8 +270,7 @@ def train(trainloader, model, criterion, optimizer, epoch, use_cuda):
             for i in range(outputs.shape[1]):
                 out = (outputs[:, i].flatten())
                 targ = targets.eq(i+1).float()
-                loss_update =  criterion(outputs[:, i].flatten(), targets.eq(i+1).float())
-                loss += loss_update
+                loss += criterion(outputs[:, i].flatten(), targets.eq(i+1).float())
         else:
             loss = criterion(outputs, targets)
        

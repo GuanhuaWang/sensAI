@@ -28,7 +28,10 @@ import dataset
 from apoz_policy import * 
 activations = []
 sizes = []
-running_scores_by_layer = [None for _ in range(16)]
+global num_layers
+num_layers = 16
+apoz_scores_by_layer = [None for _ in range(num_layers)]
+avg_scores_by_layer = [None for _ in range(num_layers)]
 global layer_idx
 num_batches = 0
 num_classes = 10
@@ -46,13 +49,18 @@ num_classes = 10
 def parse_activation(feature_map):
     # torch.save(feature_map, feature_map_out_file)
     global layer_idx
-    global running_scores_by_layer
+    global apoz_scores_by_layer
+    global avg_scores_by_layer
+    global num_layers
     apoz_score = apoz_scoring(feature_map).numpy()
-    if running_scores_by_layer[layer_idx] is None:
-        running_scores_by_layer[layer_idx] = apoz_score
+    avg_score = avg_scoring(feature_map).numpy()
+    if apoz_scores_by_layer[layer_idx] is None:
+        apoz_scores_by_layer[layer_idx] = apoz_score
+        avg_scores_by_layer[layer_idx] = avg_score
     else:
-        running_scores_by_layer[layer_idx] = np.add(running_scores_by_layer[layer_idx], apoz_score)
-    layer_idx = (layer_idx + 1) % 16
+        apoz_scores_by_layer[layer_idx] = np.add(apoz_scores_by_layer[layer_idx], apoz_score)
+        avg_scores_by_layer[layer_idx] = np.add(avg_scores_by_layer[layer_idx], avg_score)
+    layer_idx = (layer_idx + 1) % num_layers
 """
     Apply a hook to RelU layer
 """
@@ -128,14 +136,22 @@ args = parser.parse_args()
 
 def generate_candidates():
      global num_batches
+     global num_layers
      group_id_string = ''.join(filter(lambda x: x.isdigit() or x == '_', str(args.grouped).replace(" ", "_")))
-     thresholds = [70] * 16
+     thresholds = [73] * num_layers
+     avg_thresholds = [0.01] * num_layers
      candidates_by_layer = []
-     for layer_idx, layer_scores in enumerate(running_scores_by_layer):
-         layer_scores *= 1/float(num_batches)
-         layer_scores = torch.Tensor(layer_scores)
-         candidates = [x[0] for x in layer_scores.gt(thresholds[layer_idx]).nonzero().tolist()]
-         candidates_by_layer.append(candidates)
+     for layer_idx, (apoz_scores, avg_scores) in enumerate(zip(apoz_scores_by_layer, avg_scores_by_layer)):
+         apoz_scores *= 1/float(num_batches)
+         apoz_scores = torch.Tensor(apoz_scores)
+      
+         avg_scores *= 1/float(num_batches)
+         avg_scores = torch.Tensor(avg_scores)
+         avg_candidates = [idx for idx, score in enumerate(avg_scores) if score >= avg_thresholds[layer_idx]]
+         candidates = [x[0] for x in apoz_scores.gt(thresholds[layer_idx]).nonzero().tolist()]
+    
+         difference_candidates = list(set(candidates).difference(set(avg_candidates)))
+         candidates_by_layer.append(difference_candidates)
      print("Total candidates: {}".format(sum([len(l) for l in candidates_by_layer])))
      np.save(open("prune_candidate_logs/class_({})_apoz_layer_thresholds.npy".format( group_id_string), "wb"), candidates_by_layer)
      print(candidates_by_layer)

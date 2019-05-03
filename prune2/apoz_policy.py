@@ -24,6 +24,19 @@ def apoz_scoring(activation):
         raise ValueError("activation_channels_apoz: Unsupported shape: ".format(activation.shape))
     return 100 - featuremap_apoz_mat.mean(dim=0).mul(100).cpu()
 
+
+def avg_scoring(activation):
+	activation = activation.cpu()
+	if activation.dim() == 4:
+		view_2d = activation.view(-1, activation.size(2) * activation.size(3))
+		featuremap_avg = view_2d.abs().sum(dim = 1).float() / (activation.size(2) * activation.size(3))
+		featuremap_avg_mat = featuremap_avg.view(activation.size(0), activation.size(1))
+	elif activation.dim() == 2:
+		featuremap_avg_mat = activation.abs().sum(dim = 1).float() / activation.size(1)
+	else:
+		raise ValueError("activation_channels_avg: Unsupported shape: ".format(activation.shape))
+	return featuremap_avg_mat.mean(dim = 0).cpu()
+
 def pruning_candidates(group_id, thresholds, file_name):
 	layers_channels = []
 	fmap_file = open(file_name, "rb")

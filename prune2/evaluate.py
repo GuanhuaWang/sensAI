@@ -28,6 +28,8 @@ import dataset
 import glob
 import re
 
+from compute_flops import print_model_param_flops
+
 class MyTestDataset(Dataset):
     def __init__(self):
         self.cifar10 = datasets.CIFAR10(root='./data',
@@ -86,6 +88,7 @@ parser.add_argument('--binary', action='store_true', help='whether to use binary
 parser.add_argument('--prune-test', action='store_true', help='Set to true to prune according to test set ')
 parser.add_argument('--refined', default=False, action='store_true', help='Set to true to retrain pruned model ')
 parser.add_argument('--grouped', default=False, action='store_true', help='Set to true to evaluate for grouped models')
+parser.add_argument('--bce', default=False, action='store_true', help='Using BCE rather than CE')
 args = parser.parse_args()
 state = {k: v for k, v in args._get_kwargs()}
 
@@ -145,10 +148,10 @@ def main():
     # trainloader = data.DataLoader(trainset, batch_size=args.train_batch, shuffle=True, num_workers=args.workers)
 
     testset = MyTestDataset()
-    testloader = data.DataLoader(testset, batch_size=100, shuffle=True, num_workers=args.workers)
+    testloader = data.DataLoader(testset, batch_size=128, shuffle=True, num_workers=args.workers)
 
     cudnn.benchmark = True
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss() # if not args.bce else nn.BCEWithLogitsLoss()
 
     if args.evaluate:
         if args.binary:
@@ -168,7 +171,7 @@ def main():
             else:
                 for i in range(10):
                     model = models.__dict__[args.arch](dataset=args.dataset, depth=16)
-                    model = torch.nn.DataParallel(model).cuda() 
+                    # model = torch.nn.DataParallel(model).cuda() 
                     folder = args.checkpoint + '_{}'.format(i)
                     checkpoint = torch.load(os.path.join(folder, 'checkpoint.pth.tar'))
                     model.load_state_dict(checkpoint['state_dict'])
@@ -177,6 +180,8 @@ def main():
             test_acc = test_list(testloader, model_list, criterion, start_epoch, use_cuda)
         if args.grouped:
             model_list = []
+            num_flops = []
+            avg_num_param = 0.0
             args.checkpoint = os.path.dirname(args.resume)
             print(args.resume)
             file_names = [f for f in glob.glob(args.resume + "*.pth", recursive=False)]
@@ -186,12 +191,19 @@ def main():
             permutation_indices = [int(c) for c in "".join(group_id_list).replace("_","")]
             permutation_indices = torch.eye(10)[permutation_indices].cuda()
             for group_id, file_name in zip(group_id_list, file_names):
-                model = models.__dict__[args.arch](dataset=args.dataset, depth=16)
+                # model = models.__dict__[args.arch](dataset=args.dataset, depth=16)
+                model = models.__dict__[args.arch](num_classes=num_classes)
                 model = torch.load(file_name)
+                # model = model.module.cuda()
                 model = torch.nn.DataParallel(model).cuda()
                 # print(model)
+                avg_num_param += sum(p.numel() for p in model.parameters())/1000000.0
                 print('Grouped model for Class {} Total params: {:2f}M'.format(group_id ,sum(p.numel() for p in model.parameters())/1000000.0))
+                # num_flops.append(print_model_param_flops(model, 32))
                 model_list.append(model)
+            # print("Average number of flops: ", sum(num_flops) / float(len(num_flops)))
+            # print("Average number of param: ", avg_num_param / float(len(num_flops)))
+            
             test_acc = test_list(testloader, model_list, criterion, start_epoch, use_cuda, permutation_indices)
 
 """
@@ -232,21 +244,25 @@ def test_list(testloader, model_list, criterion, epoch, use_cuda, p_indices):
             for model_idx, model in enumerate(model_list):
                 output_current = model(inputs)[:, 1].unsqueeze(1)
                 output_list = torch.cat((output_list, output_current), 1)
+        elif args.bce:
+           for model_idx, model in enumerate(model_list):
+                output = nn.Softmax(dim=1)(model(inputs))
+                # print(output[0])
+                # input()
+                output_list = torch.cat((output_list, output), 1)
+                # print(output_list)
+                # prnt(input)
         else:
             for idx, model in enumerate(model_list):
                 output = nn.Softmax(dim=1)(model(inputs))[:,1:]
                 output_list = torch.cat((output_list, output), 1)
-            # print(output_list[0, :])
-            # print(targets[0])
-            # print(group_id_list)
-            # ['2_3', '8_9', '0_1', '6_7', '4_5']
-            # input()
-            # neg_list = torch.mm(torch.Tensor(neg_list).view(-1).cuda(), p_indices)
-            output_list = torch.mm(output_list, p_indices)
-            # print("Negative List: ", neg_list)
-            # print(targets[0], "   ", output_list[0, :])
+        output_list = torch.mm(output_list, p_indices)
+            
+        # print("")
+        # print(targets[0], ['{:.2f}'.format(x) for x in output_list[0]] )
+        # input()
             # print(neg_list[0])
-            # input()
+
   
         outputs = output_list
         loss = criterion(outputs, targets)
@@ -262,7 +278,8 @@ def test_list(testloader, model_list, criterion, epoch, use_cuda, p_indices):
         end = time.time()
 
         # plot progress
-        bar.suffix  = '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f} | top5: {top5: .4f}'.format(
+       
+    bar.suffix  = '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f} | top5: {top5: .4f}'.format(
                     batch=batch_idx + 1,
                     size=len(testloader),
                     data=data_time.avg,
@@ -273,7 +290,8 @@ def test_list(testloader, model_list, criterion, epoch, use_cuda, p_indices):
                     top1=top1.avg,
                     top5=top5.avg,
                     )
-        bar.next()
+    bar.next()
+     
     bar.finish()
     return (losses.avg, top1.avg)
 
