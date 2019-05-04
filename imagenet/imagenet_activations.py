@@ -36,15 +36,15 @@ def parse_activation(feature_map):
     global apoz_scores_by_layer
     global avg_scores_by_layer
     global num_layers
-    apoz_score = apoz_scoring(feature_map).numpy()
-    avg_score = avg_scoring(feature_map).numpy()
+    apoz_score = apoz_scoring(feature_map)
+    avg_score = avg_scoring(feature_map)
     
     if apoz_scores_by_layer[layer_idx] is None:
         apoz_scores_by_layer[layer_idx] = apoz_score
         avg_scores_by_layer[layer_idx] = avg_score
     else:
-        apoz_scores_by_layer[layer_idx] = np.add(apoz_scores_by_layer[layer_idx], apoz_score)
-        avg_scores_by_layer[layer_idx] = np.add(avg_scores_by_layer[layer_idx], avg_score)
+        apoz_scores_by_layer[layer_idx] = torch.add(apoz_scores_by_layer[layer_idx], apoz_score)
+        avg_scores_by_layer[layer_idx] = torch.add(avg_scores_by_layer[layer_idx], avg_score)
 
     layer_idx = (layer_idx + 1) % num_layers
 """
@@ -76,7 +76,7 @@ parser.add_argument('--epochs', default=90, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=128, type=int,
+parser.add_argument('-b', '--batch-size', default=64, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
@@ -125,16 +125,15 @@ def generate_candidates(group):
      global num_layers
      group_id_string = ''.join(filter(lambda x: x.isdigit() or x == '_', str(group).replace(" ", "_")))
      apoz_thresholds = [73] * num_layers
-     avg_thresholds = [0.01] * num_layers
+     avg_thresholds = [99999999999] * num_layers
      candidates_by_layer = []
      for layer_idx, (apoz_scores, avg_scores) in enumerate(zip(apoz_scores_by_layer, avg_scores_by_layer)):
          apoz_scores *= 1/ float(num_batches)
-         apoz_scores = torch.Tensor(apoz_scores) if not isinstance(apoz_scores, np.float64) else torch.Tensor([apoz_scores])
+         apoz_scores = apoz_scores.cpu() 
 
          avg_scores *= 1/ float(num_batches)
-         avg_scores = torch.Tensor(avg_scores) if not isinstance(avg_scores, np.float64) else torch.Tensor([avg_scores])
-
-         avg_candidates = [idx for idx, score in enumerate(avg_scores) if score >= avg_thresholds[layer_idx]]
+         avg_scores = avg_scores.cpu()
+         avg_candidates = [idx for idx, score in enumerate(avg_scores) if score >= avg_thresholds[layer_idx]] if avg_scores.dim() != 0 else []
          candidates = [x[0] for x in apoz_scores.gt(apoz_thresholds[layer_idx]).nonzero().tolist()]
 
          difference_candidates = list(set(candidates).difference(set(avg_candidates)))
@@ -200,23 +199,25 @@ def main_worker(gpu, args):
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
             best_acc1 = checkpoint['best_acc1']
-      
-            for p in model.classifier:
-                 if isinstance(p, torch.nn.modules.activation.ReLU):
-                     num_layers += 1
-            for i, p in model.features._modules.items():
-                 if isinstance(p, torch.nn.modules.activation.ReLU):
-                     num_layers += 1
-
-            apoz_scores_by_layer = [None for _ in range(num_layers)]
-            avg_scores_by_layer = [None for _ in range(num_layers)]
             optimizer.load_state_dict(checkpoint['optimizer'])
-            model.features = model.features.cuda(args.gpu) # cpu()
-            model = model.cuda(args.gpu) # cpu()
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
+
+
+
+    for p in model.classifier:
+         if isinstance(p, torch.nn.modules.activation.ReLU):
+             num_layers += 1
+    for i, p in model.features._modules.items():
+         if isinstance(p, torch.nn.modules.activation.ReLU):
+             num_layers += 1
+
+    apoz_scores_by_layer = [None for _ in range(num_layers)]
+    avg_scores_by_layer = [None for _ in range(num_layers)]
+    model.features = model.features.cuda(args.gpu) # cpu()
+    model = model.cuda(args.gpu) # cpu()
 
     # Data loading code
     traindir = os.path.join(args.data, 'train')
