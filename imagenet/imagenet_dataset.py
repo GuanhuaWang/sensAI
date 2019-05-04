@@ -1,3 +1,6 @@
+``` Adapted from https://raw.githubusercontent.com/pytorch/vision/v0.2.0/torchvision/datasets/folder.py
+    Pytorch Github Repository, vision/torchvision/datasets/folder.py
+```
 import torch.utils.data as data
 
 from PIL import Image
