@@ -13,7 +13,7 @@ group_id_list = [re.search('\(([^)]+)', f_name).group(1) for f_name in file_name
 	Calculate the Average Percentage of Zeros Score of the feature map activation layer output
 """
 def apoz_scoring(activation):
-    activation = activation.cpu()
+    # activation = activation.cpu()
     if activation.dim() == 4:
         view_2d = activation.view(-1, activation.size(2) * activation.size(3))  # (batch*channels) x (h*w)
         featuremap_apoz = view_2d.abs().gt(0.005).sum(dim=1).float() / (activation.size(2) * activation.size(3))  # (batch*channels) x 1
@@ -22,11 +22,11 @@ def apoz_scoring(activation):
         featuremap_apoz_mat = activation.abs().gt(0.005).sum(dim=1).float() / activation.size(1)  # batch x 1
     else:
         raise ValueError("activation_channels_apoz: Unsupported shape: ".format(activation.shape))
-    return 100 - featuremap_apoz_mat.mean(dim=0).mul(100).cpu()
+    return 100 - featuremap_apoz_mat.mean(dim=0).mul(100)
 
 
 def avg_scoring(activation):
-	activation = activation.cpu()
+	# activation = activation.cpu()
 	if activation.dim() == 4:
 		view_2d = activation.view(-1, activation.size(2) * activation.size(3))
 		featuremap_avg = view_2d.abs().sum(dim = 1).float() / (activation.size(2) * activation.size(3))
@@ -35,7 +35,7 @@ def avg_scoring(activation):
 		featuremap_avg_mat = activation.abs().sum(dim = 1).float() / activation.size(1)
 	else:
 		raise ValueError("activation_channels_avg: Unsupported shape: ".format(activation.shape))
-	return featuremap_avg_mat.mean(dim = 0).cpu()
+	return featuremap_avg_mat.mean(dim = 0)
 
 def pruning_candidates(group_id, thresholds, file_name):
 	layers_channels = []
