@@ -39,6 +39,16 @@ def parse_activation(feature_map):
     apoz_score = apoz_scoring(feature_map)
     avg_score = avg_scoring(feature_map)
     
+    # if layer_idx == 16 or layer_idx == 17:
+        # print(feature_map[0].shape)
+        # print(feature_map[:10])
+        # print(layer_idx)
+        # print(avg_score)
+        # print(apoz_score)
+        # print(apoz_scores_by_layer[layer_idx])
+        # print(feature_map.dim())
+        # input()
+    
     if apoz_scores_by_layer[layer_idx] is None:
         apoz_scores_by_layer[layer_idx] = apoz_score
         avg_scores_by_layer[layer_idx] = avg_score
@@ -116,16 +126,17 @@ parser.add_argument('--multiprocessing-distributed', default=False, action='stor
 
 parser.add_argument('--group', type=int, nargs='+', default=[],
                         help='Generate activations based on the these class indices')
-
+parser.add_argument('--name', type=str, default='Name', help='Set the name id of the group')
 
 best_acc1 = 0
 
-def generate_candidates(group):
+def generate_candidates(name):
      global num_batches
      global num_layers
-     group_id_string = ''.join(filter(lambda x: x.isdigit() or x == '_', str(group).replace(" ", "_")))
-     apoz_thresholds = [73] * num_layers
-     avg_thresholds = [99999999999] * num_layers
+     group_id_string = name
+     # group_id_string = ''.join(filter(lambda x: x.isdigit() or x == '_', str(group).replace(" ", "_")))
+     apoz_thresholds = [99.99] * num_layers
+     avg_thresholds = [999999999999999999] * num_layers
      candidates_by_layer = []
      for layer_idx, (apoz_scores, avg_scores) in enumerate(zip(apoz_scores_by_layer, avg_scores_by_layer)):
          apoz_scores *= 1/ float(num_batches)
@@ -139,7 +150,7 @@ def generate_candidates(group):
          difference_candidates = list(set(candidates).difference(set(avg_candidates)))
          candidates_by_layer.append(difference_candidates)
      print("Total candidates: {}".format(sum([len(l) for l in candidates_by_layer])))
-     np.save(open("prune_candidate_logs/class_({})_apoz_layer_thresholds.npy".format( group_id_string), "wb"), candidates_by_layer)
+     np.save(open("prune_candidate_logs/group_({})_apoz_layer_thresholds.npy".format( group_id_string), "wb"), candidates_by_layer)
      print(candidates_by_layer)
 
 
@@ -249,7 +260,7 @@ def main_worker(gpu, args):
     """ 
     if args.evaluate:
         validate(val_loader, model, criterion, args)
-        generate_candidates(args.group)
+        generate_candidates(args.name)
         return
 
 

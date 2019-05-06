@@ -1,11 +1,14 @@
-``` Adapted from https://raw.githubusercontent.com/pytorch/vision/v0.2.0/torchvision/datasets/folder.py
+""" Adapted from https://raw.githubusercontent.com/pytorch/vision/v0.2.0/torchvision/datasets/folder.py
     Pytorch Github Repository, vision/torchvision/datasets/folder.py
-```
+"""
 import torch.utils.data as data
 
 from PIL import Image
 import os
 import os.path
+
+import random
+import pdb
 
 IMG_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm']
 
@@ -30,11 +33,12 @@ def find_classes(dir):
     return classes, class_to_idx
 
 
-def make_dataset(dir, class_to_idx, group = None):
+def make_dataset(dir, class_to_idx, group = None, target_abs_index = None):
     images = []
     dir = os.path.expanduser(dir)
     for target in sorted(os.listdir(dir)):
-        if group and int(class_to_idx[target]) not in group:
+        # pdb.set_trace()
+        if int(class_to_idx[target]) not in group:
             continue
 
         d = os.path.join(dir, target)
@@ -45,10 +49,14 @@ def make_dataset(dir, class_to_idx, group = None):
             for fname in sorted(fnames):
                 if is_image_file(fname):
                     path = os.path.join(root, fname)
-                    item = (path, class_to_idx[target])
+                    # pdb.set_trace()
+                    if target_abs_index != None :
+                        item = (path, target_abs_index)
+                    else:
+                        item = (path, class_to_idx[target])
                     images.append(item)
 
-    return images
+    return images # random.sample(images, 5000) # Used for debug
 
 
 def pil_loader(path):
@@ -101,16 +109,51 @@ class ImageFolder(data.Dataset):
     """
 
     def __init__(self, root, transform=None, target_transform=None,
-                 loader=default_loader, activations = False, group = None):
+                 loader=default_loader, activations = False, group = None, retrain = False):
         classes, class_to_idx = find_classes(root)
 
         # Case: Evaluate but pull from training set
         if activations and group:
             imgs = make_dataset(root, class_to_idx, group)
-        elif group: # Case: Train / Evaluate: pos/neg according to group
-             imgs = make_dataset(root, class_to_idx, group)
-        else:
-             imgs = make_dataset(root, class_to_idx, group)
+        elif group is not None: # Case: Train / Evaluate: pos/neg according to group
+             if retrain: # Subcase: Retraining (Training Set Creation)
+                 imgs = []
+                 #negative_indices = [i for i in range(1000) if i not in group]
+                 #neg_imgs = make_dataset(root, \
+                 #                        class_to_idx, \
+                 #                        group=negative_indices, \
+                 #                        target_abs_index=0)
+                 #neg_imgs = random.sample(neg_imgs, 1300)
+                 # num_negative = len(neg_imgs)
+                 # pdb.set_trace()
+                 # imgs.extend(neg_imgs)
+                 # print("Added {} negative images with target index {}".format(num_negative, 0))
+                 for abs_index, class_index in enumerate(group):
+                      pos_imgs = make_dataset(root, \
+                                              class_to_idx, \
+                                              group=[class_index], \
+                                              target_abs_index=abs_index + 1)
+                      multiplier = max(1, 0) #num_negative // len(pos_imgs))
+                      imgs.extend(pos_imgs)
+                      # print("Added {} positive images with target index {}".format(len(pos_imgs)*multiplier, abs_index))      
+             else: # Subcase: Evaluation (Validation Set Creation)
+                 imgs = []
+                 # negative_indices = [i for i in range(1000) if i not in group]
+                 # neg_imgs = make_dataset(root, \
+                 #                        class_to_idx, \
+                 #                        group=negative_indices, \
+                 #                        target_abs_index=0)
+                 # imgs.extend(neg_imgs)
+                 # pdb.set_trace()
+                 for abs_index, class_index in enumerate(group):
+                      pos_imgs = make_dataset(root, \
+                                              class_to_idx, \
+                                              group=[class_index], \
+                                              target_abs_index=abs_index + 1)
+                      imgs.extend(pos_imgs)
+                 # pdb.set_trace()
+        else: # Case: Default
+             imgs = make_dataset(root, class_to_idx, group = [i for i in range(1000)])
         if len(imgs) == 0:
             raise(RuntimeError("Found 0 images in subfolders of: " + root + "\n"
                                "Supported image extensions are: " + ",".join(IMG_EXTENSIONS)))
