@@ -18,8 +18,11 @@ def apoz_scoring(activation):
         view_2d = activation.view(-1, activation.size(2) * activation.size(3))  # (batch*channels) x (h*w)
         featuremap_apoz = view_2d.abs().gt(0.005).sum(dim=1).float() / (activation.size(2) * activation.size(3))  # (batch*channels) x 1
         featuremap_apoz_mat = featuremap_apoz.view(activation.size(0), activation.size(1))  # batch x channels
-    elif activation.dim() == 2:
-        featuremap_apoz_mat = activation.abs().gt(0.005).sum(dim=1).float() / activation.size(1)  # batch x 1
+    elif activation.dim() == 2 and activation.shape[1] == 1:
+        featuremap_apoz_mat = activation.abs().gt(0.005).sum(dim=1).float() / activation.size(1) 
+    elif activation.dim() == 2: # FC Case: (batch x channels)
+        featuremap_apoz_mat = activation.abs().gt(0.005).sum(dim=0).float()
+        return 100 - featuremap_apoz_mat.mul(100)
     else:
         raise ValueError("activation_channels_apoz: Unsupported shape: ".format(activation.shape))
     return 100 - featuremap_apoz_mat.mean(dim=0).mul(100)
@@ -31,8 +34,10 @@ def avg_scoring(activation):
 		view_2d = activation.view(-1, activation.size(2) * activation.size(3))
 		featuremap_avg = view_2d.abs().sum(dim = 1).float() / (activation.size(2) * activation.size(3))
 		featuremap_avg_mat = featuremap_avg.view(activation.size(0), activation.size(1))
-	elif activation.dim() == 2:
+	elif activation.dim() == 2 and activation.shape[1] == 1:
 		featuremap_avg_mat = activation.abs().sum(dim = 1).float() / activation.size(1)
+	elif activation.dim() == 2:
+		featuremap_avg_mat =  activation.abs().float()
 	else:
 		raise ValueError("activation_channels_avg: Unsupported shape: ".format(activation.shape))
 	return featuremap_avg_mat.mean(dim = 0)
