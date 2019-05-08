@@ -23,6 +23,8 @@ import torchvision.transforms as transforms
 import imagenet_dataset as datasets
 import torchvision.models as models
 
+from logger import Logger
+
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
@@ -35,9 +37,9 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                     help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: resnet18)')
-parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
+parser.add_argument('-j', '--workers', default=16, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
-parser.add_argument('--epochs', default=90, type=int, metavar='N',
+parser.add_argument('--epochs', default=10, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
@@ -46,13 +48,14 @@ parser.add_argument('-b', '--batch-size', default=64, type=int,
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
                          'using Data Parallel or Distributed Data Parallel')
-parser.add_argument('--lr', '--learning-rate', default=0.001, type=float,
+parser.add_argument('--lr', '--learning-rate', default=0.01, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
 parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)',
                     dest='weight_decay')
+parser.add_argument('--gamma', type=float, default=0.1, help='LR is multiplied by gamma on schedule.')
 parser.add_argument('-p', '--print-freq', default=10, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
@@ -80,10 +83,19 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'multi node data parallel training')
 parser.add_argument('--config', default=None, type=str, metavar='PATH',
                     help='Path of the grouping configuration file')
+parser.add_argument('-c', '--checkpoint', default='checkpoint', type=str, metavar='PATH',
+                    help='path to save checkpoint (default: checkpoint)')
+parser.add_argument('--schedule', type=int, nargs='+', default=[150, 225],
+                        help='Decrease learning rate at these epochs.')
+
+
 best_acc1 = 0
-average_acc = 0.0            
+average_acc = 0.0
+args = parser.parse_args() 
+state = {k: v for k, v in args._get_kwargs()}
+           
 def main():
-    args = parser.parse_args()
+    global args
 
     if args.seed is not None:
         random.seed(args.seed)
@@ -174,11 +186,13 @@ def main_worker(gpu, ngpus_per_node, args):
             # model = torch.nn.DataParallel(model).cuda()
 
     # optionally resume from a checkpoint
+    title = 'imagenet-1k-' + args.arch
     if args.resume:
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
             model = torch.load(args.resume)
             model = torch.nn.DataParallel(model).cuda()
+            print('    Total params: %.2fM' % (sum(p.numel() for p in model.parameters())/1000000.0))
             # args.start_epoch = checkpoint['epoch']
             # best_acc1 = checkpoint['best_acc1']
             # if args.gpu is not None:
@@ -209,6 +223,10 @@ def main_worker(gpu, ngpus_per_node, args):
     group_id = int(re.search('\(([^)]+)', args.resume).group(1))
     group_config = np.load(open(args.config, "rb"))[group_id]
     # group_config = [i for i in range(1000)]   
+    model_prefix = args.checkpoint + args.arch + '_(' + str(group_id) + ')_' + 'pruned_group_model'
+    logger = Logger(model_prefix + '_log.txt', title=title)
+    logger.set_names(['Learning Rate', 'Train Loss', 'Valid Loss', 'Train Acc.', 'Valid Acc.'])
+
 
     # Data loading code
     traindir = os.path.join(args.data, 'train')
@@ -238,17 +256,6 @@ def main_worker(gpu, ngpus_per_node, args):
         num_workers=args.workers, pin_memory=True, sampler=train_sampler)
     '''
 
-
-    val_loader = torch.utils.data.DataLoader(
-    datasets.ImageFolder(
-        valdir,
-        transforms.Compose([
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize,
-        ]), group=group_config)) # Retrain true, performs dataset balancing
-
  
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -270,16 +277,45 @@ def main_worker(gpu, ngpus_per_node, args):
     ''' 
 
     if args.evaluate:
+
+        val_loader = torch.utils.data.DataLoader(
+        datasets.ImageFolder(
+            valdir,
+            transforms.Compose([
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ]), group=group_config)) # Retrain true, performs dataset balancing
         validate(val_loader, model, criterion, args)
         return
 
+    if not os.path.isdir(args.checkpoint):
+        mkdir_p(args.checkpoint)
+
+    
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
         adjust_learning_rate(optimizer, epoch, args)
 
 
-        ## Fast and dirty way to resample negative images after each epoch. 
+        ## Fast and dirty way to resample negative images after each epoch.
+
+
+        val_loader = torch.utils.data.DataLoader(
+            datasets.ImageFolder(
+            valdir,
+            transforms.Compose([
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ]), group=group_config), \
+            batch_size=args.batch_size, shuffle=False, \
+            num_workers=args.workers, pin_memory=True) # Retrain true, performs dataset balancing
+
+
         train_dataset = datasets.ImageFolder(
             traindir,
             transforms.Compose([
@@ -301,27 +337,25 @@ def main_worker(gpu, ngpus_per_node, args):
             num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
 
+        # Validate once before begin training
+        test_loss, acc1 = validate(val_loader, model, criterion, args) 
         # pdb.set_trace()
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args, val_loader)
+        train_loss, train_acc = train(train_loader, model, criterion, optimizer, epoch, args, val_loader)
 
-        # evaluate on validation set
-        acc1 = validate(val_loader, model, criterion, args)
 
         # remember best acc@1 and save checkpoint
         is_best = acc1 > best_acc1
         best_acc1 = max(acc1, best_acc1)
+        if is_best:
+            torch.save(model, model_prefix + '.pth')
 
-        if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-                and args.rank % ngpus_per_node == 0):
-            save_checkpoint({
-                'epoch': epoch + 1,
-                'arch': args.arch,
-                'state_dict': model.state_dict(),
-                'best_acc1': best_acc1,
-                'optimizer' : optimizer.state_dict(),
-            }, is_best)
 
+        logger.append([state['lr'], train_loss, test_loss, train_acc, acc1])
+        
+
+    logger.close()
+    logger.plot()
 
 def train(train_loader, model, criterion, optimizer, epoch, args, val_loader=None):
     batch_time = AverageMeter('Time', ':6.3f')
@@ -339,8 +373,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args, val_loader=Non
     step_count = 1
     for i, (input, target) in enumerate(train_loader):
         # measure data loading time
+        # pdb.set_trace()
         data_time.update(time.time() - end)
-
         if args.gpu is not None:
             input = input.cuda(args.gpu, non_blocking=True)
         target = target.cuda(args.gpu, non_blocking=True)
@@ -369,8 +403,9 @@ def train(train_loader, model, criterion, optimizer, epoch, args, val_loader=Non
             # validate(val_loader, model, criterion, args, step_count)
             # step_count += 1
             # model.train()
-            print(progress.print(i))
+            progress.print(i)
 
+    return (losses.avg, top1.avg)
 
 def validate(val_loader, model, criterion, args, step=None):
     global average_acc
@@ -399,8 +434,8 @@ def validate(val_loader, model, criterion, args, step=None):
         target = target.cuda(args.gpu, non_blocking=True)
 
             # compute output
-        output = model(input)[:, :] # Ignore negative output
-        print(target[0], np.argmax(output.detach()))
+        output = model(input) # Ignore negative output
+        # print(target[0], np.argmax(output.detach()))
         # pdb.set_trace()
         loss = criterion(output, target)
 
@@ -424,10 +459,10 @@ def validate(val_loader, model, criterion, args, step=None):
                 #break
 
         # TODO: this should also be done with the ProgressMeter
-        print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
-              .format(top1=top1, top5=top5))
+            print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
+                  .format(top1=top1, top5=top5))
 
-    return top1.avg
+    return (losses.avg, top1.avg)
 
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
@@ -499,6 +534,14 @@ def accuracy(output, target, topk=(1,)):
             correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
+"""
+def adjust_learning_rate(optimizer, epoch):
+    global state
+    if epoch in args.schedule:
+        state['lr'] *= args.gamma
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = state['lr']
+"""
 
 
 if __name__ == '__main__':
