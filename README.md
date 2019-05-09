@@ -43,5 +43,6 @@ procedure, we ARE able to launch 10 models across 10 GPUs. <br>
 The main differences I observed between these two situations are: <br>
 Training (Forward + Backwards) vs Inference (Forward only) <br>
 Multiple GPUS vs Single GPUS (Though I did try to launch just two models at once each with a single GPU) <br>
-In training situation, zombie threads (O_O) from killed processes, still living and eating up CPU cycles. <br>
+In training situation, may have existed zombie threads (O_O) from killed processes, still living and eating up CPU cycles. <br>
 Worth looking into from a system perspective? If for some reason people want to train multiple models at once on a single machine.<br>
+Executing from python vs executing from bash
