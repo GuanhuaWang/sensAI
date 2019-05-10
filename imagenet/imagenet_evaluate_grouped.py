@@ -126,79 +126,12 @@ def main_worker(gpu, ngpus_per_node, args):
     global best_acc1
     args.gpu = gpu
 
-    if args.gpu is not None:
-        print("Use GPU: {} for training".format(args.gpu))
-
-    if args.distributed:
-        if args.dist_url == "env://" and args.rank == -1:
-            args.rank = int(os.environ["RANK"])
-        if args.multiprocessing_distributed:
-            # For multiprocessing distributed training, rank needs to be the
-            # global rank among all the processes
-            args.rank = args.rank * ngpus_per_node + gpu
-        dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
-                                world_size=args.world_size, rank=args.rank)
-    # create model
-    if args.pretrained:
-        print("=> using pre-trained model '{}'".format(args.arch))
-        model = models.__dict__[args.arch](pretrained=True)
-    else:
-        print("=> creating model '{}'".format(args.arch))
-        model = models.__dict__[args.arch]()
-
-    if args.distributed:
-        # For multiprocessing distributed, DistributedDataParallel constructor
-        # should always set the single device scope, otherwise,
-        # DistributedDataParallel will use all available devices.
-        if args.gpu is not None:
-            torch.cuda.set_device(args.gpu)
-            model.cuda(args.gpu)
-            # When using a single GPU per process and per
-            # DistributedDataParallel, we need to divide the batch size
-            # ourselves based on the total number of GPUs we have
-            args.batch_size = int(args.batch_size / ngpus_per_node)
-            args.workers = int(args.workers / ngpus_per_node)
-            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
-        else:
-            model.cuda()
-            # DistributedDataParallel will divide and allocate batch_size to all
-            # available GPUs if device_ids are not set
-            # model = torch.nn.parallel.DistributedDataParallel(model)
-    elif args.gpu is not None:
-        torch.cuda.set_device(args.gpu)
-        model = model.cuda(args.gpu)
-    # else:
-        # DataParallel will divide and allocate batch_size to all available GPUs
-        # if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
-        #    model.features = torch.nn.DataParallel(model.features)
-        #    model.cuda()
-        #else:
-        #     model = torch.nn.DataParallel(model).cuda()
-
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
-
-    # optionally resume from a checkpoint
-    # if args.resume:
-        # if os.path.isfile(args.resume):
-            # print("=> loading checkpoint '{}'".format(args.resume))
-            # checkpoint = torch.load(args.resume)
-            # args.start_epoch = checkpoint['epoch']
-            # best_acc1 = checkpoint['best_acc1']
-            # if args.gpu is not None:
-                # best_acc1 may be from a checkpoint from a different GPU
-                # model = model.cpu()
-                # model = torch.nn.DataParallel(model).cuda()
-            #    best_acc1 = best_acc1.to(args.gpu)
-            #model.load_state_dict(checkpoint['state_dict'])
-            #optimizer.load_state_dict(checkpoint['optimizer'])
-            
-        # else:
-        #     print("=> no checkpoint found at '{}'".format(args.resume))
 
     model_list = []
     num_flops = []
@@ -207,29 +140,21 @@ def main_worker(gpu, ngpus_per_node, args):
     file_names = [f for f in glob.glob(args.resume + "*.pth", recursive=False)] 
     group_id_list = [re.search('\(([^)]+)', f_name).group(1) for f_name in file_names]
     group_config = np.load(open(args.config, "rb"))
-    permutation_indices = []# To allow for arbitrary grouping
-    pdb.set_trace()
+    permutation_indices = []   # To allow for arbitrary grouping
     for group_id in group_id_list:
-        # print(group_id)
         permutation_indices.extend(group_config[int(group_id)])
-    print(permutation_indices)
-    # pdb.set_trace()
     permutation_indices = torch.eye(1000)[permutation_indices].cuda()
-    # Insert grouping config to select
 
     for group_id, file_name in zip(group_id_list, file_names):
         model = torch.load(file_name)
-        # model = torch.nn.DataParallel(model).cuda(0)
         avg_num_param += sum(p.numel() for p in model.parameters())/1000000.0
-        # num_flops.append(print_model_param_flops(model, 32))
         print('Group {} model has total params: {:2f}M'.format(group_id ,sum(p.numel() for p in model.parameters())/1000000.0))
+        # Insert Compute Flops num_flops.append(compute_flops(..))
         model_list.append(model)
 
     # print("Average number of flops: ", sum(num_flops) / float(len(num_flops)))
     print("Average number of param: ", avg_num_param / float(len(model_list)))
-
-    
-
+ 
     cudnn.benchmark = True
 
     valdir = os.path.join(args.data, 'val')
@@ -284,25 +209,18 @@ def validate(val_loader, model_list, criterion, args, p_indices):
     with torch.no_grad():
         end = time.time()
         for i, (input, target) in enumerate(val_loader):
-            # with torch.cuda.device(0):
-            if args.gpu is not None:
-                # input = input.cuda(args.gpu, non_blocking=True)
-                input = input.cuda(async=True)
-                target = target.cuda(async=True)   #(args.gpu, non_blocking=True)
              
             input = input.cuda()
             target = target.cuda() 
-            # input, target = torch.autograd.Variable(input, volatile=True), torch.autograd.Variable(target)
 
             # compute output
             output_list = torch.Tensor().cuda()
             for model in model_list:
-                # pdb.set_trace()
-                output = nn.Softmax(dim=1)(model(input))[:, 1:]# [:, 1:]# nn.Softmax(dim=1)(model(input))[:, 1:]
+                output = nn.Softmax(dim=1)(model(input))[:, 1:]
                 output_list= torch.cat((output_list, output), 1)
 
             output = torch.mm(output_list, p_indices)
-            # output = model(input)
+       
             loss = criterion(output, target)
 
             # measure accuracy and record loss
@@ -370,13 +288,6 @@ class ProgressMeter(object):
         num_digits = len(str(num_batches // 1))
         fmt = '{:' + str(num_digits) + 'd}'
         return '[' + fmt + '/' + fmt.format(num_batches) + ']'
-
-
-def adjust_learning_rate(optimizer, epoch, args):
-    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    lr = args.lr * (0.1 ** (epoch // 30))
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
 
 
 def accuracy(output, target, topk=(1,)):

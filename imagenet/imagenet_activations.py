@@ -31,23 +31,12 @@ num_batches = 0
 num_classes = 10
 
 def parse_activation(feature_map):
-    # torch.save(feature_map, feature_map_out_file)
     global layer_idx
     global apoz_scores_by_layer
     global avg_scores_by_layer
     global num_layers
     apoz_score = apoz_scoring(feature_map)
     avg_score = avg_scoring(feature_map)
-    
-    # if layer_idx == 16 or layer_idx == 17:
-        # print(feature_map[0].shape)
-        # print(feature_map[:10])
-        # print(layer_idx)
-        # print(avg_score)
-        # print(apoz_score)
-        # print(apoz_scores_by_layer[layer_idx])
-        # print(feature_map.dim())
-        # input()
     
     if apoz_scores_by_layer[layer_idx] is None:
         apoz_scores_by_layer[layer_idx] = apoz_score
@@ -57,6 +46,8 @@ def parse_activation(feature_map):
         avg_scores_by_layer[layer_idx] = torch.add(avg_scores_by_layer[layer_idx], avg_score)
 
     layer_idx = (layer_idx + 1) % num_layers
+
+
 """
     Apply a hook to RelU layer
 """
@@ -134,7 +125,6 @@ def generate_candidates(name):
      global num_batches
      global num_layers
      group_id_string = name
-     # group_id_string = ''.join(filter(lambda x: x.isdigit() or x == '_', str(group).replace(" ", "_")))
      apoz_thresholds = [90] * num_layers
      avg_thresholds = [999999999] * num_layers
      candidates_by_layer = []
@@ -247,17 +237,8 @@ def main_worker(gpu, args):
     val_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True, sampler=None)
-    """
-    val_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolder(valdir, transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize,
-        ]), group=[0], activations=True),
-        batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True)
-    """ 
+
+
     if args.evaluate:
         validate(val_loader, model, criterion, args)
         generate_candidates(args.name)
