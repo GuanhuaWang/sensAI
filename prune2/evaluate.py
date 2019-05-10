@@ -192,17 +192,14 @@ def main():
             permutation_indices = torch.eye(10)[permutation_indices].cuda()
             for group_id, file_name in zip(group_id_list, file_names):
                 # model = models.__dict__[args.arch](dataset=args.dataset, depth=16)
-                model = models.__dict__[args.arch](num_classes=num_classes)
                 model = torch.load(file_name)
-                # model = model.module.cuda()
-                model = torch.nn.DataParallel(model).cuda()
-                # print(model)
+                # model = torch.nn.DataParallel(model).cuda()
                 avg_num_param += sum(p.numel() for p in model.parameters())/1000000.0
                 print('Grouped model for Class {} Total params: {:2f}M'.format(group_id ,sum(p.numel() for p in model.parameters())/1000000.0))
-                # num_flops.append(print_model_param_flops(model, 32))
+                num_flops.append(print_model_param_flops(model, 32))
                 model_list.append(model)
-            # print("Average number of flops: ", sum(num_flops) / float(len(num_flops)))
-            # print("Average number of param: ", avg_num_param / float(len(num_flops)))
+            print("Average number of flops: ", sum(num_flops) / float(len(num_flops)))
+            print("Average number of param: ", avg_num_param / float(len(num_flops)))
             
             test_acc = test_list(testloader, model_list, criterion, start_epoch, use_cuda, permutation_indices)
 
