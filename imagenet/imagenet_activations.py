@@ -86,7 +86,7 @@ parser.add_argument('--epochs', default=90, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=64, type=int,
+parser.add_argument('-b', '--batch-size', default=128, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
@@ -135,8 +135,8 @@ def generate_candidates(name):
      global num_layers
      group_id_string = name
      # group_id_string = ''.join(filter(lambda x: x.isdigit() or x == '_', str(group).replace(" ", "_")))
-     apoz_thresholds = [99.99] * num_layers
-     avg_thresholds = [999999999999999999] * num_layers
+     apoz_thresholds = [90] * num_layers
+     avg_thresholds = [999999999] * num_layers
      candidates_by_layer = []
      for layer_idx, (apoz_scores, avg_scores) in enumerate(zip(apoz_scores_by_layer, avg_scores_by_layer)):
          apoz_scores *= 1/ float(num_batches)

@@ -115,6 +115,7 @@ class ImageFolder(data.Dataset):
         # Case: Evaluate but pull from training set
         if activations and group:
             imgs = make_dataset(root, class_to_idx, group)
+            imgs = random.sample(imgs, 150000)
         elif group is not None: # Case: Train / Evaluate: pos/neg according to group
              # pdb.set_trace()
              if retrain: # Subcase: Retraining (Training Set Creation)
@@ -128,7 +129,7 @@ class ImageFolder(data.Dataset):
                  num_negative = len(neg_imgs)
                  # pdb.set_trace()
                  imgs.extend(neg_imgs)
-                 print("Added {} negative images with target index {}".format(num_negative, 0))
+                 # print("Added {} negative images with target index {}".format(num_negative, 0))
                  for abs_index, class_index in enumerate(group):
                       pos_imgs = make_dataset(root, \
                                               class_to_idx, \
@@ -137,7 +138,7 @@ class ImageFolder(data.Dataset):
                       multiplier = max(1, 0) #num_negative // len(pos_imgs))
                       imgs.extend(pos_imgs)
                  # pdb.set_trace()
-                 print("Num images in training set: {}".format(len(imgs)))
+                 # print("Num images in training set: {}".format(len(imgs)))
                       # print("Added {} positive images with target index {}".format(len(pos_imgs)*multiplier, abs_index))      
              else: # Subcase: Evaluation (Validation Set Creation)
                  imgs = []
@@ -147,7 +148,7 @@ class ImageFolder(data.Dataset):
                                          group=negative_indices, \
                                          target_abs_index=0)
                  
-                 # neg_imgs = random.sample(neg_imgs, 1000)
+                 neg_imgs = random.sample(neg_imgs, 50)
                  imgs.extend(neg_imgs)
                  # pdb.set_trace()
                  for abs_index, class_index in enumerate(group):
@@ -156,7 +157,7 @@ class ImageFolder(data.Dataset):
                                               group=[class_index], \
                                               target_abs_index=abs_index + 1)
                       imgs.extend(pos_imgs)
-                 print("Num images in validation set {}".format(len(imgs)))
+                 # print("Num images in validation set {}".format(len(imgs)))
                  # pdb.set_trace()
         else: # Case: Default
              imgs = make_dataset(root, class_to_idx, group = [i for i in range(1000)])

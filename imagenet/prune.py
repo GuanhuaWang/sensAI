@@ -229,7 +229,9 @@ def prune_last_fc_layers(model, class_indices, filter_indices = None, use_bce=Fa
     new_weights = new_linear_layer.weight.data.cpu().numpy()        
 
     new_weights[bce_offset:, :] = old_weights[class_indices][:,filter_idx_mask]
-  
+ 
+
+ 
     new_linear_layer.bias.data[bce_offset:] = torch.from_numpy(np.asarray(old_linear_layer.bias.data.cpu().numpy()[class_indices])).cuda()
 
     new_linear_layer.weight.data = torch.from_numpy(new_weights).cuda()
