@@ -22,6 +22,8 @@ import torchvision.models as models
 
 import numpy as np
 from apoz_policy import *
+import pdb
+
 
 global num_layers
 num_layers = 0
@@ -38,6 +40,8 @@ def parse_activation(feature_map):
     apoz_score = apoz_scoring(feature_map)
     avg_score = avg_scoring(feature_map)
     
+    # pdb.set_trace()
+
     if apoz_scores_by_layer[layer_idx] is None:
         apoz_scores_by_layer[layer_idx] = apoz_score
         avg_scores_by_layer[layer_idx] = avg_score
@@ -45,7 +49,7 @@ def parse_activation(feature_map):
         apoz_scores_by_layer[layer_idx] = torch.add(apoz_scores_by_layer[layer_idx], apoz_score)
         avg_scores_by_layer[layer_idx] = torch.add(avg_scores_by_layer[layer_idx], avg_score)
 
-    layer_idx = (layer_idx + 1) % num_layers
+    layer_idx = (layer_idx + 1)
 
 
 """
@@ -77,7 +81,7 @@ parser.add_argument('--epochs', default=90, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=128, type=int,
+parser.add_argument('-b', '--batch-size', default=64, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
@@ -206,18 +210,22 @@ def main_worker(gpu, args):
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
 
-
-
+    # pdb.set_trace()
+    # Still not the best way but it works
+    num_layers = len([m for m in model.modules() if isinstance(m, torch.nn.modules.activation.ReLU)])
+    """ 
+    # ugly way to count num layers, above cleaner
     for p in model.classifier:
          if isinstance(p, torch.nn.modules.activation.ReLU):
              num_layers += 1
     for i, p in model.features._modules.items():
          if isinstance(p, torch.nn.modules.activation.ReLU):
              num_layers += 1
+    """
 
     apoz_scores_by_layer = [None for _ in range(num_layers)]
     avg_scores_by_layer = [None for _ in range(num_layers)]
-    model.features = model.features.cuda(args.gpu) # cpu()
+    # model.features = model.features.cuda(args.gpu) # cpu()
     model = model.cuda(args.gpu) # cpu()
 
     # Data loading code
@@ -243,9 +251,6 @@ def main_worker(gpu, args):
         validate(val_loader, model, criterion, args)
         generate_candidates(args.name)
         return
-
-
-
 
 
 def validate(val_loader, model, criterion, args):
