@@ -26,38 +26,34 @@ import pdb
 
 
 global num_layers
-num_layers = 0
+num_layers = sys.maxsize
 global layer_idx
 layer_idx = 0 
 num_batches = 0
-num_classes = 10
 
-def parse_activation(feature_map):
+
+def parse_activation(relu_reference, feature_map):
     global layer_idx
-    global apoz_scores_by_layer
-    global avg_scores_by_layer
     global num_layers
     apoz_score = apoz_scoring(feature_map)
-    avg_score = avg_scoring(feature_map)
-    
-    # pdb.set_trace()
+    avg_score = avg_scoring(feature_map) 
 
-    if apoz_scores_by_layer[layer_idx] is None:
-        apoz_scores_by_layer[layer_idx] = apoz_score
-        avg_scores_by_layer[layer_idx] = avg_score
+    if len(apoz_scores_by_layer) < num_layers:
+        apoz_scores_by_layer.append(apoz_score)
+        avg_scores_by_layer.append(avg_score)
     else:
         apoz_scores_by_layer[layer_idx] = torch.add(apoz_scores_by_layer[layer_idx], apoz_score)
         avg_scores_by_layer[layer_idx] = torch.add(avg_scores_by_layer[layer_idx], avg_score)
 
-    layer_idx = (layer_idx + 1)
-
+    layer_idx += 1
+     
 
 """
     Apply a hook to RelU layer
 """
 def hook(self, input, output):
     if self.__class__.__name__ == 'ReLU':
-       parse_activation(output.data)
+       parse_activation(self, output.data)
 
 def apply_hook(m):
    m.register_forward_hook(hook)
@@ -127,17 +123,21 @@ best_acc1 = 0
 
 def generate_candidates(name):
      global num_batches
-     global num_layers
+     global apoz_scores_by_layer
+     global avg_scores_by_layer
+     global num_layers # = len(apoz_scores_by_layer)
      group_id_string = name
      apoz_thresholds = [90] * num_layers
-     avg_thresholds = [999999999] * num_layers
+     avg_thresholds = [sys.maxsize] * num_layers   #sys.maxsize to disable avg
      candidates_by_layer = []
+
      for layer_idx, (apoz_scores, avg_scores) in enumerate(zip(apoz_scores_by_layer, avg_scores_by_layer)):
          apoz_scores *= 1/ float(num_batches)
          apoz_scores = apoz_scores.cpu() 
 
          avg_scores *= 1/ float(num_batches)
          avg_scores = avg_scores.cpu()
+ 
          avg_candidates = [idx for idx, score in enumerate(avg_scores) if score >= avg_thresholds[layer_idx]] if avg_scores.dim() != 0 else []
          candidates = [x[0] for x in apoz_scores.gt(apoz_thresholds[layer_idx]).nonzero().tolist()]
 
@@ -210,23 +210,10 @@ def main_worker(gpu, args):
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
 
-    # pdb.set_trace()
-    # Still not the best way but it works
-    num_layers = len([m for m in model.modules() if isinstance(m, torch.nn.modules.activation.ReLU)])
-    """ 
-    # ugly way to count num layers, above cleaner
-    for p in model.classifier:
-         if isinstance(p, torch.nn.modules.activation.ReLU):
-             num_layers += 1
-    for i, p in model.features._modules.items():
-         if isinstance(p, torch.nn.modules.activation.ReLU):
-             num_layers += 1
-    """
-
-    apoz_scores_by_layer = [None for _ in range(num_layers)]
-    avg_scores_by_layer = [None for _ in range(num_layers)]
-    # model.features = model.features.cuda(args.gpu) # cpu()
-    model = model.cuda(args.gpu) # cpu()
+   
+    apoz_scores_by_layer =  [] 
+    avg_scores_by_layer =  []
+    model = model.cuda(args.gpu) 
 
     # Data loading code
     traindir = os.path.join(args.data, 'train')
@@ -256,6 +243,7 @@ def main_worker(gpu, args):
 def validate(val_loader, model, criterion, args):
     global layer_idx
     global num_batches
+    global num_layers
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
@@ -292,6 +280,8 @@ def validate(val_loader, model, criterion, args):
             if i % args.print_freq == 0:
                 progress.print(i)
 
+            num_layers = layer_idx
+          
         # TODO: this should also be done with the ProgressMeter
         print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
               .format(top1=top1, top5=top5))

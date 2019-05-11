@@ -1,7 +1,5 @@
 1) To gather candidates first specify the arch and num gpus in the file, <br>
-     gather_candidates.py <br>
-For resnet, may need to make changes to imagenet_activations.py <br>
-(due to out of order relu hook calls) <br>
+     gather_candidates.py <br> <br>
 
 If want to use a different grouping scheme, specify in gather_candidates.py as well.  <br> <br>
 
