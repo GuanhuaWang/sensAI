@@ -1,9 +1,9 @@
 1) To gather candidates first specify the arch and num gpus in the file, <br>
-     gather_candidates.py <br> <br>
+     `gather_candidates.py` <br> <br>
 
-If want to use a different grouping scheme, specify in gather_candidates.py as well.  <br> <br>
+If want to use a different grouping scheme, specify in `gather_candidates.py` as well.  <br> <br>
 
-Once complete, candidates will be stored in ./prune_candidate_logs <br> <br>
+Once complete, candidates will be stored in `./prune_candidate_logs <br> <br>`
 
 Note: If debugging and want to generate candidates faster, can specify less sample points to generate for activations in imagenet_dataset.py, under the activations case in the init of the image folder. <br> <br>
 
