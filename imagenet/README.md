@@ -31,4 +31,4 @@ Note: The current setup trains each model sequentially <br> <br>
              --config pruned_models_test/grouping_config.npy  <br> <br>
 
 To evaluate the recombined group classifiers, <br>
-python3 evaluate.py -a vgg19_bn --test-batch 100  --resume ./TEST_DIR_retrained/ --evaluate --grouped --config <br>  PRUNED_MODEL_SAVE_DIR/grouping_config.npy  <br>
+python3 imagenet_evaluate_grouped.py ~/imagenet/ -a vgg19_bn --resume ./pruned_models_30M_param_retrained/ --evaluate --config  ./pruned_models_30M_param/grouping_config.npy
