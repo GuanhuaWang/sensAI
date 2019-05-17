@@ -33,8 +33,12 @@ Note: The current setup trains each model sequentially <br> <br>
 
 4) For evaluation, to evaluate a single group <br> <br>
 ```
- python3 imagenet_official_retrain.py /home/ubuntu/imagenet --arch vgg19_bn --resume <br>  PATH_TO_SAVED_MODEL/vgg19_bn/MODEL_PATH.pth --evaluate \ <br>
-             --config pruned_models_test/grouping_config.npy  <br> <br>
+ python3 imagenet_official_retrain.py /home/ubuntu/imagenet --arch vgg19_bn --resume 
+ 
+ PATH_TO_SAVED_MODEL/vgg19_bn/MODEL_PATH.pth --evaluate \
+ 
+             --config pruned_models_test/grouping_config.npy
+             
 ```
 
 To evaluate the recombined group classifiers, <br>
