@@ -35,7 +35,7 @@ Note: The current setup trains each model sequentially <br> <br>
 ```
  python3 imagenet_official_retrain.py /home/ubuntu/imagenet --arch vgg19_bn --resume \
  
- PATH_TO_SAVED_MODEL/vgg19_bn/MODEL_PATH.pth --evaluate \
+             PATH_TO_SAVED_MODEL/vgg19_bn/MODEL_PATH.pth --evaluate \
  
              --config pruned_models_test/grouping_config.npy
              
