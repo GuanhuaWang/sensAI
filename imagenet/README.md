@@ -9,7 +9,13 @@ Note: If debugging and want to generate candidates faster, can specify less samp
 
 2) To generate pruned models specify the prune model save dir and arch with the following script, <br> <br>
 
+For VGG: <br> <br>
+
 python3 prune_and_get_model.py -a vgg19_bn --pretrained -c ./prune_candidate_logs/ -s ./PRUNED_MODEL_SAVE_DIR <br> <br>
+
+For ResNet: <br> <br>
+
+python3 prune_and_get_resnet.py -a resnet50 --pretrained -c ./prune_candidate_logs/ -s ./PRUNED_MODEL_SAVE_DIR <br> <br>
 
 Once complete, pruned models will be stored in ./PRUNED_MODEL_SAVE_DIR <br>
 The grouping config will also be saved in the same directory<br> 
