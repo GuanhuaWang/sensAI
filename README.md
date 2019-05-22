@@ -1,14 +1,34 @@
 # sensAI_experiments
 
-## neuron prunning for VGG19_bn
+## CIFAR10 binary classifier pruning and retraining
 
-To prune (dir: ~/zihao/rona_experiments/limo/vgg-pruning/)
+In `master` branch.
+
+1. Generate per-class image feature-maps for a specific CNN. Under `sensai_experiments/pytorch-classification/`
+
+`bash activations/get_activations_script.sh`
+
+2. neuron prunning for VGG19_bn (as example)
+
+2.1 Get pruning candidates (dir: `sensai_experiments/apoz/`)
+
+`python3 hybrid_policy.py`
+
+2.2 To prune (dir: sensai_experiments/vgg-pruning/)
 
 `python3 prune_and_get_model.py -a vgg19_bn -r ~/baseModel/pytorch-classification/checkpoints/cifar10/vgg19_bn -c ~/guanhua/sensai_experiments/sensai/vgg-pruning/prune_candidate_logs/10per -s ./pruned_models_10per`
 
-To evaluate binary classifiers (dir: ~/zihao/rona_experiments/pytorch-classification/)
+2.3 To retrain (dir `sensai_experiments/pytorch-classification/`)
 
-`python3 evaluate.py -a vgg19_bn --test-batch 100 --resume ~/zihao/rona_experiments/limo/vgg-pruning/pruned_models_90per/vgg19_bn/ --evaluate --binary --pruned`
+`bash scripts/train_pruned_binary.sh`
+
+3. To evaluate binary classifiers (dir: `sensai_experiments/pytorch-classification/`)
+
+`python3 evaluate.py -a vgg19_bn --test-batch 100 --resume ~/sensai_experiments/vgg-pruning/pruned_models_90per/vgg19_bn/ --evaluate --binary --pruned`
+
+## Imagenet Grouping
+
+In `imagenet/grouping` branch, under dir `sensai_experiments/imagenet/`. There is a readme.md file for further explaination.
 
 ## Further exploration
 
