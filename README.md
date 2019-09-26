@@ -1,5 +1,13 @@
 # sensAI_experiments
 
+## Get baseline fully trained model
+
+We are using this repo to train the baseline models https://github.com/bearpaw/pytorch-classification
+
+One common issue is `ModuleNotFoundError: No module named 'progress'` which is solved here 
+
+https://github.com/bearpaw/pytorch-pose/issues/62
+
 ## CIFAR10 binary classifier pruning and retraining
 
 In `master` branch.
