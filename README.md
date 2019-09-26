@@ -1,6 +1,6 @@
 # sensAI_experiments
 
-## Get baseline fully trained model
+## Get baseline fully-trained model
 
 We are using this repo to train the baseline models https://github.com/bearpaw/pytorch-classification
 
