@@ -1,6 +1,6 @@
 # sensAI_experiments
 
-Most of the experiments are run with pytorch ver. 0.3.1.post2
+Most of the experiments are run with `pytorch ver. 0.3.1.post2`
 
 ## Get baseline fully-trained model
 
