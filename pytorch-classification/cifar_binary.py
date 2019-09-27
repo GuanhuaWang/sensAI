@@ -81,6 +81,7 @@ parser.add_argument('--gpu-id', default='0', type=str,
 parser.add_argument('--class-index', default=0, type=int,
                     help='class index for binary cls')
 parser.add_argument('--pruned', action='store_true', help='whether testing pruned models')
+parser.add_argument('--accuracy-threshold', type=float, help='accuracy threshold that causes early stopping if reached during training')
 
 
 args = parser.parse_args()
@@ -236,6 +237,9 @@ def main():
         else:
             if is_best:
                 torch.save(model, os.path.join(args.checkpoint, 'model.pth'))
+        # terminate training early if we've specified such a threshold and the model has attained it
+        if args.accuracy_threshold is not None and test_acc > args.accuracy_threshold:
+            break
 
     logger.close()
     logger.plot()
