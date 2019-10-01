@@ -99,6 +99,8 @@ celerybeat-schedule
 .venv
 env/
 venv/
+#for symlinks to other virtual environments not in this directory
+venv
 ENV/
 env.bak/
 venv.bak/
