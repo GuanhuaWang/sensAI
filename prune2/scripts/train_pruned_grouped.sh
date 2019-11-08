@@ -1,6 +1,6 @@
 #!/bin/sh
 EPOCHS=80
-FROM=./test
+FROM=./pruned_models
 SAVE=${FROM}_retrained
 mkdir ${SAVE}
 rm ${SAVE}/* -r 

@@ -197,7 +197,7 @@ def main():
                 avg_num_param += sum(p.numel() for p in model.parameters())/1000000.0
                 print('Grouped model for Class {} Total params: {:2f}M'.format(group_id ,sum(p.numel() for p in model.parameters())/1000000.0))
                 num_flops.append(print_model_param_flops(model, 32))
-                model_list.append(model)
+                model_list.append(model.cuda())
             print("Average number of flops: ", sum(num_flops) / float(len(num_flops)))
             print("Average number of param: ", avg_num_param / float(len(num_flops)))
             
