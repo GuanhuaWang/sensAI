@@ -1,76 +1,100 @@
-import argparse
 import numpy as np
 import torch
-import io
-import glob 
-import re
+import contextlib
+import logging
 
-path = './feature_map_data/'
-file_names = [f for f in glob.glob(path + "*.pt", recursive=False)]
-group_id_list = [re.search('\(([^)]+)', f_name).group(1) for f_name in file_names]
+logger = logging.Logger(__name__)
 
-"""
-	Calculate the Average Percentage of Zeros Score of the feature map activation layer output
-"""
+
 def apoz_scoring(activation):
-    activation = activation.cpu()
+    """
+    Calculate the Average Percentage of Zeros Score of the feature map activation layer output
+    """
+    activation = (activation.abs() <= 0.005).float()
     if activation.dim() == 4:
-        view_2d = activation.view(-1, activation.size(2) * activation.size(3))  # (batch*channels) x (h*w)
-        featuremap_apoz = view_2d.abs().gt(0.005).sum(dim=1).float() / (activation.size(2) * activation.size(3))  # (batch*channels) x 1
-        featuremap_apoz_mat = featuremap_apoz.view(activation.size(0), activation.size(1))  # batch x channels
+        featuremap_apoz_mat = activation.mean(dim=(0, 2, 3))
     elif activation.dim() == 2:
-        featuremap_apoz_mat = activation.abs().gt(0.005).sum(dim=1).float() / activation.size(1)  # batch x 1
+        featuremap_apoz_mat = activation.mean(dim=(0, 1))
     else:
-        raise ValueError("activation_channels_apoz: Unsupported shape: ".format(activation.shape))
-    return 100 - featuremap_apoz_mat.mean(dim=0).mul(100).cpu()
+        raise ValueError(
+            f"activation_channels_avg: Unsupported shape: {activation.shape}")
+    return featuremap_apoz_mat.mul(100).cpu()
 
 
 def avg_scoring(activation):
-	activation = activation.cpu()
-	if activation.dim() == 4:
-		view_2d = activation.view(-1, activation.size(2) * activation.size(3))
-		featuremap_avg = view_2d.abs().sum(dim = 1).float() / (activation.size(2) * activation.size(3))
-		featuremap_avg_mat = featuremap_avg.view(activation.size(0), activation.size(1))
-	elif activation.dim() == 2:
-		featuremap_avg_mat = activation.abs().sum(dim = 1).float() / activation.size(1)
-	else:
-		raise ValueError("activation_channels_avg: Unsupported shape: ".format(activation.shape))
-	return featuremap_avg_mat.mean(dim = 0).cpu()
-
-def pruning_candidates(group_id, thresholds, file_name):
-	layers_channels = []
-	fmap_file = open(file_name, "rb")
-	data_buffer = io.BytesIO(fmap_file.read())
-	for _ in range(16):
-		layers_channels.append(torch.load(data_buffer))
-
-	candidates_by_layer = []
-	print("Calculating pruning candidates for classe(s) {}".format(group_id))
-	for index, layer in enumerate(layers_channels):
-		apoz_score = apoz_scoring(layer)
-		print(apoz_score.mean())
-
-		curr_threshold = thresholds[index]
-		while True:
-			num_candidates = apoz_score.gt(curr_threshold).sum()
-			print("Greater than {} %".format(curr_threshold), num_candidates)
-			if num_candidates < apoz_score.size()[0]:
-				candidates = [x[0] for x in apoz_score.gt(curr_threshold).nonzero().tolist()]
-				break
-			curr_threshold += 5
-
-		print("Class Index: {}, Layer {}, Number of neurons with apoz > {}%: {}/{}".format(group_id, index, curr_threshold, len(candidates), apoz_score.size()[0]))
-		candidates_by_layer.append(candidates)
-		print("Zero channels out of total in layer {}: {}/{}".format(index, len(candidates) ,len(layer)))
-	return candidates_by_layer
+    activation = activation.abs()
+    if activation.dim() == 4:
+        featuremap_avg_mat = activation.mean(dim=(0, 2, 3))
+    elif activation.dim() == 2:
+        featuremap_avg_mat = activation.mean(dim=(0, 1))
+    else:
+        raise ValueError(
+            f"activation_channels_avg: Unsupported shape: {activation.shape}")
+    return featuremap_avg_mat.cpu()
 
 
-if __name__ == '__main__':
-	candidates_across_classes = []
-	## Specificy threshold by layer
-	thresholds = [55] * 16
-	for group_id, file_name in zip(group_id_list, file_names):
-		group_candidates = pruning_candidates(group_id, thresholds, file_name)
-		np.save(open("prune_candidate_logs/class_({})_apoz_layer_thresholds.npy".format(group_id), "wb"), group_candidates)
-		candidates_across_classes.append(group_candidates)
-	
+class ActivationRecord:
+    def __init__(self):
+        self.apoz_scores_by_layer = []
+        self.avg_scores_by_layer = []
+        self.num_batches = 0
+        self.layer_idx = 0
+        self._candidates_by_layer = None
+
+    def parse_activation(self, feature_map):
+        apoz_score = apoz_scoring(feature_map).numpy()
+        avg_score = avg_scoring(feature_map).numpy()
+
+        if self.num_batches == 0:
+            self.apoz_scores_by_layer.append(apoz_score)
+            self.avg_scores_by_layer.append(avg_score)
+        else:
+            self.apoz_scores_by_layer[self.layer_idx] += apoz_score
+            self.avg_scores_by_layer[self.layer_idx] += avg_score
+        self.layer_idx += 1
+
+    @contextlib.contextmanager
+    def record(self):
+        no_grad = torch.no_grad()
+        yield no_grad.__enter__()
+        self.layer_idx = 0
+        self.num_batches += 1
+        no_grad.__exit__()
+
+    def _hook(self, module, input, output):
+        """Apply a hook to RelU layer"""
+        if module.__class__.__name__ == 'ReLU':
+            self.parse_activation(output)
+
+    def apply_hook(self, model):
+        # switch to evaluate mode
+        model.eval()
+        model.apply(lambda m: m.register_forward_hook(self._hook))
+
+    def generate_pruned_candidates(self):
+        if self._candidates_by_layer is not None:
+            logger.warning("candicates have been computated")
+            return self._candidates_by_layer
+        for score in self.apoz_scores_by_layer:
+            score /= self.num_batches
+        for score in self.avg_scores_by_layer:
+            score /= self.num_batches
+
+        num_layers = len(self.apoz_scores_by_layer)
+        thresholds = [73] * num_layers
+        avg_thresholds = [0.01] * num_layers
+
+        candidates_by_layer = []
+        for layer_idx, (apoz_scores, avg_scores) in enumerate(zip(self.apoz_scores_by_layer, self.avg_scores_by_layer)):
+            apoz_scores = torch.Tensor(apoz_scores)
+            avg_scores = torch.Tensor(avg_scores)
+            avg_candidates = [idx for idx, score in enumerate(
+                avg_scores) if score >= avg_thresholds[layer_idx]]
+            candidates = [x[0] for x in apoz_scores.gt(
+                thresholds[layer_idx]).nonzero().tolist()]
+
+            difference_candidates = list(
+                set(candidates).difference(set(avg_candidates)))
+            candidates_by_layer.append(difference_candidates)
+        print(f"Total pruned candidates: {sum(len(l) for l in candidates_by_layer)}")
+        return candidates_by_layer

@@ -4,19 +4,6 @@ from torchvision.datasets import CIFAR10
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
-# Transformations
-RC   = transforms.RandomCrop(32, padding=4)
-RHF  = transforms.RandomHorizontalFlip()
-RVF  = transforms.RandomVerticalFlip()
-NRM  = transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-TT   = transforms.ToTensor()
-TPIL = transforms.ToPILImage()
-
-# Transforms object for trainset with augmentation
-transform_with_aug = transforms.Compose([TPIL, RC, RHF, TT, NRM])
-# Transforms object for testset with NO augmentation
-transform_no_aug   = transforms.Compose([TT, NRM])
-
 # Representative images index
 # repre_idx = np.loadtxt('bottom500.txt')
 # print(repre_idx.shape)

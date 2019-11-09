@@ -1,5 +1,4 @@
-"""ining script for CIFAR-10/100
-        print('\nEpoch: [%d | %d] LR: %f' % (epoch + 1, args.epochs, state['lr']))
+"""Training script for CIFAR-10/100
 Copyright (c) Wei YANG, 2017
 """
 from __future__ import print_function
