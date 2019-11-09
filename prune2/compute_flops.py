@@ -102,9 +102,13 @@ def print_model_param_flops(model=None, input_res=224, multiply_adds=True):
     if model == None:
         model = torchvision.models.alexnet()
     foo(model)
-    input = Variable(torch.rand(3, 3, input_res, input_res), requires_grad = True)
-    out = model(input)
-
+    input = torch.rand(3, 3, input_res, input_res)
+    if input.is_cuda:
+        model.cuda()
+    else:
+        model.cpu()
+    with torch.no_grad():
+        _ = model(input)
 
     total_flops = (sum(list_conv) + sum(list_linear) + sum(list_bn) + sum(list_relu) + sum(list_pooling) + sum(list_upsample))
 

@@ -1,1 +1,3 @@
 data/
+checkpoint_bearclaw.pth.tar
+prune_candidate_logs/

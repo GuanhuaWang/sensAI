@@ -15,7 +15,7 @@ TT = transforms.ToTensor()
 TPIL = transforms.ToPILImage()
 
 # Transforms object for trainset with augmentation
-transform_with_aug = transforms.Compose([TPIL, RC, RHF, TT, NRM])
+transform_with_aug = transforms.Compose([RC, RHF, TT, NRM])
 # Transforms object for testset with NO augmentation
 transform_no_aug = transforms.Compose([TT, NRM])
 
@@ -26,5 +26,5 @@ CIFAR10_DATASET_ROOT = './data/'
 class CIFAR10TrainingSetWrapper(utils.TrainingSetWrapper):
     def __init__(self, class_group: Tuple[int], negative_samples=False):
         dataset = datasets.CIFAR10(root=CIFAR10_DATASET_ROOT, train=True,
-                                   download=True, shuffle=False, transforms=transform_with_aug)
+                                   download=True, transform=transform_with_aug)
         super().__init__(dataset, class_group, negative_samples)

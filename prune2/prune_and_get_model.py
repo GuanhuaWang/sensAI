@@ -7,6 +7,7 @@ import os
 import sys
 import argparse
 import pathlib
+import pickle
 
 import torch
 import torch.nn as nn
@@ -46,14 +47,18 @@ def main():
         print('Pruning classes {}'.format(group_id))
 
         # load pruning candidates
-        candidates = np.load(open(file_name, 'rb')).tolist()
+        with open(file_name, 'rb') as f:
+            candidates = pickle.load(f)
 
         # load checkpoints
         checkpoint = torch.load(args.resume)
+        state_dict = {}
+        for k, v in checkpoint['state_dict'].items():
+            state_dict[k.replace('module.', '')] = v
         # model = models.__dict__[args.arch](dataset='cifar10', depth=16, cfg=checkpoint['cfg'])
         model = models.__dict__[args.arch](num_classes=num_classes)
         model.cuda()
-        model.load_state_dict(checkpoint['state_dict'])
+        model.load_state_dict(state_dict)
         conv_indices = [idx for idx, (n, p) in enumerate(
             model.features._modules.items()) if isinstance(p, nn.Conv2d)]
         for layer_index, filter_list in zip(conv_indices, candidates):

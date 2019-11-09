@@ -22,5 +22,5 @@ After above script runs, retrained model located at specified save dir <br>
 
 7) To evaluate, <br>
 
-  python3 evaluate.py -a vgg19_bn --test-batch 100  --resume ./PATH_TO_RETRAIN_SAVED_DIR/ --evaluate --grouped
+  python3 evaluate.py -a vgg19_bn --test-batch 100  --resume ./PATH_TO_RETRAIN_SAVED_DIR/
 

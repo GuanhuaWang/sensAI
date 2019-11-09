@@ -1,17 +1,19 @@
 import argparse
 import os
 import time
+import pickle
 
 import torch
+from torch import nn
 import torch.backends.cudnn as cudnn
 import models.cifar as models
 import numpy as np
 from utils import Bar, AverageMeter
 import logging
 
-import dataset
 from apoz_policy import ActivationRecord
 from datasets import cifar10
+from tqdm import tqdm
 
 logger = logging.Logger(__name__)
 
@@ -45,10 +47,10 @@ args = parser.parse_args()
 use_cuda = torch.cuda.is_available() and True
 
 # Random seed
-np.random.seed(args.manualSeed)
-torch.manual_seed(args.manualSeed)
+np.random.seed(args.seed)
+torch.manual_seed(args.seed)
 if use_cuda:
-    torch.cuda.manual_seed_all(args.manualSeed)
+    torch.cuda.manual_seed_all(args.seed)
 
 global_record = ActivationRecord()
 assert args.grouped
@@ -56,31 +58,33 @@ assert args.grouped
 
 def main():
     dataset = cifar10.CIFAR10TrainingSetWrapper(args.grouped, False)
-    pruning_loader = torch.data.utils.DataLoader(
+    pruning_loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=1000,
-        shuffle=True,
         num_workers=args.workers,
         pin_memory=False)
 
     # cudnn.benchmark = True
     print('==> Resuming from checkpoint..')
     assert os.path.isfile(args.resume), 'Error: no checkpoint found!'
-    checkpoint = torch.load(args.resume)
+    if use_cuda:
+        checkpoint = torch.load(args.resume)
+    else:
+        checkpoint = torch.load(args.resume, map_location=torch.device('cpu'))
     # config = checkpoint['cfg']
     # model = models.__dict__[args.arch](dataset=args.dataset, depth=19, cfg=config)
     model = models.__dict__[args.arch](num_classes=10)
     if use_cuda:
         model.cuda()
-    if use_cuda:
-        model.load_state_dict(checkpoint['state_dict'])
-    else:
-        model.load_state_dict(checkpoint['state_dict'])
+    state_dict = {}
+    for k, v in checkpoint['state_dict'].items():
+        state_dict[k.replace('module.', '')] = v
+    model.load_state_dict(state_dict)
     print('\nMake a test run to generate activations. \n Using training set.\n')
     collect_pruning_data(pruning_loader, model, use_cuda)
     candidates_by_layer = global_record.generate_pruned_candidates()
     with open(f"prune_candidate_logs/class_({'_'.join(str(n) for n in args.grouped)})_apoz_layer_thresholds.npy", "wb") as f:
-        np.save(f, candidates_by_layer)
+        pickle.dump(candidates_by_layer, f)
     print(candidates_by_layer)
 
 
@@ -95,8 +99,9 @@ def collect_pruning_data(pruning_loader, model, use_cuda):
     print('===EVAL===')
 
     end = time.time()
-    bar = Bar('Processing', max=len(pruning_loader))
+    bar = tqdm(total=len(pruning_loader))
     for batch_idx, (inputs, _) in enumerate(pruning_loader):
+        bar.update(batch_idx)
         # measure data loading time
         data_time.update(time.time() - end)
 
@@ -110,12 +115,6 @@ def collect_pruning_data(pruning_loader, model, use_cuda):
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
-
-        # plot progress
-        bar.suffix = (f'({batch_idx + 1}/{len(pruning_loader)}) Data: {data_time.avg:.3f}s | '
-                      f'Batch: {batch_time.avg:.3f}s | Total: {bar.elapsed_td:} | ETA: {bar.eta_td:}')
-        bar.next()
-    bar.finish()
 
 
 if __name__ == '__main__':
