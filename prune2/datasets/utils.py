@@ -2,13 +2,12 @@ from typing import Tuple
 import numpy as np
 
 
-class TrainingSetWrapper(object):
+class DataSetWrapper(object):
     def __init__(self, dataset, class_group: Tuple[int], negative_samples=False):
         # The original dataset has been shuffled. Skip shuffling this dataset
         # for consistency.
         self.dataset = dataset
         self.class_group = class_group
-        assert dataset.train, "not a training set"
         self.negative_samples = negative_samples
         self.targets = np.asarray(self.dataset.targets)
         # This is the bool mask for all classes in the given group.
