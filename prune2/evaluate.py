@@ -25,6 +25,8 @@ from torch.utils.data import Dataset, DataLoader
 import glob
 import re
 
+import itertools
+
 from compute_flops import print_model_param_flops
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10/100 Testing')
@@ -60,7 +62,7 @@ class GroupedModel(nn.Module):
         super().__init__()
         self.group_info = group_info
         # flatten list of list
-        permutation_indices = sum(group_info)
+        permutation_indices = list(itertools.chain.from_iterable(group_info))
         self.permutation_indices = torch.eye(len(permutation_indices))[permutation_indices]
         if use_cuda:
             self.permutation_indices = self.permutation_indices.cuda()
@@ -78,22 +80,22 @@ class GroupedModel(nn.Module):
         num_params = []
         num_flops = []
 
-        for group_id, file_name in zip(self.group_info, self.model_list):
-            n_params = sum(p.numel() for p in model.parameters()) / 1000000.0
-            num_param.append(n_params)
+        for group_id, model in zip(self.group_info, self.model_list):
+            n_params = sum(p.numel() for p in model.parameters()) / 10**6
+            num_params.append(n_params)
             print(f'Grouped model for Class {group_id} '
-                f'Total params: {n_params:2f}M')
+                  f'Total params: {n_params:2f}M')
             num_flops.append(print_model_param_flops(model, 32))
 
-        print(f"Average number of flops: {sum(num_flops) / len(num_flops)}")
-        print(f"Average number of param: {sum(num_params) / len(num_params)}")
+        print(f"Average number of flops: {sum(num_flops) / len(num_flops) / 10**9 :3f} G")
+        print(f"Average number of param: {sum(num_params) / len(num_params)} M")
 
 
 def load_pruned_models(resume):
-    file_names = [f for f in glob.glob(args.resume + "*.pth", recursive=False)]
+    file_names = [f for f in glob.glob(resume + "*.pth", recursive=False)]
     group_id_list = [re.search('\(([^)]+)', f_name).group(1)
                      for f_name in file_names]
-    print(args.resume)
+    print(resume)
     print(file_names)
     print(group_id_list)
 
@@ -101,7 +103,7 @@ def load_pruned_models(resume):
         group_id_list), "No files found. Maybe wrong directory?"
 
     model_list = [torch.load(file_name) for file_name in file_names]
-    group_info = [[int(ind) for ind in g.split('_')] for g in group_id_list)]
+    group_info = [[int(ind) for ind in g.split('_')] for g in group_id_list]
     model = GroupedModel(model_list, group_info)
     model.print_statistics()
     return model
@@ -148,6 +150,8 @@ def test_list(testloader, model, criterion, use_cuda):
     model.eval()
     end = time.time()
 
+    confusion_matrix = np.zeros((10, 10))
+
     bar = tqdm(total=len(testloader))
     # pdb.set_trace()
     for batch_idx, (inputs, targets) in enumerate(testloader):
@@ -159,6 +163,10 @@ def test_list(testloader, model, criterion, use_cuda):
         with torch.no_grad():
             outputs = model(inputs)
             loss = criterion(outputs, targets)
+            for output, target in zip(outputs, targets):
+                gt = target.item()
+                dt = np.argmax(output.cpu().numpy())
+                confusion_matrix[gt, dt] += 1
             # measure accuracy and record loss
             prec1, prec5 = accuracy(outputs, targets, topk = (1, 5))
             losses.update(loss.item(), inputs.size(0))
@@ -182,8 +190,31 @@ def test_list(testloader, model, criterion, use_cuda):
             top5=top5.avg,
         ))
     bar.close()
+    print(confusion_matrix)
+
+    print(f"group info {[group for group in model.group_info]}")
+    n_groups = len(model.group_info)
+    group_confusion_matrix = np.zeros((n_groups, n_groups))
+    for i in range(n_groups):
+        for j in range(n_groups):
+            cols = model.group_info[i]
+            rows = model.group_info[j]
+            group_confusion_matrix[i, j] += confusion_matrix[cols[0], rows[0]]
+            group_confusion_matrix[i, j] += confusion_matrix[cols[0], rows[1]]
+            group_confusion_matrix[i, j] += confusion_matrix[cols[1], rows[0]]
+            group_confusion_matrix[i, j] += confusion_matrix[cols[1], rows[1]]
+    group_confusion_matrix /= group_confusion_matrix.sum(axis=-1)[:, np.newaxis]
+    print(group_confusion_matrix)
+
+    for group in model.group_info:
+        print(f"group {group}")
+        inter_group_matrix = confusion_matrix[group, :][:, group]
+        inter_group_matrix /= inter_group_matrix.sum(axis=-1)[:, np.newaxis]
+        print(inter_group_matrix)
     return (losses.avg, top1.avg)
 
 
 if __name__ == '__main__':
     main()
+
+
