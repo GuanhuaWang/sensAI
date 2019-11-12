@@ -40,3 +40,7 @@ class DataSetWrapper(object):
 
     def __len__(self):
         return len(self.mapping)
+
+    @property
+    def num_classes(self):
+        return len(self.dataset.classes)

@@ -1,25 +1,15 @@
 import argparse
-import os
-import time
 import pickle
 
 import torch
 from torch import nn
 import torch.backends.cudnn as cudnn
-import models.cifar as models
-import numpy as np
-from utils import Bar, AverageMeter
-import logging
 
 from apoz_policy import ActivationRecord
 from datasets import cifar10
+import load_model
 from tqdm import tqdm
 
-logger = logging.Logger(__name__)
-
-model_names = sorted(name for name in models.__dict__
-                     if name.islower() and not name.startswith("__")
-                     and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(
     description='PyTorch CIFAR10/100 Generate Class Specific Information')
@@ -31,9 +21,9 @@ parser.add_argument('--resume', required=True, default='', type=str, metavar='PA
                     help='path to latest checkpoint (default: none)')
 # Architecture
 parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet20',
-                    choices=model_names,
+                    choices=load_model.model_arches('cifar'),
                     help='model architecture: ' +
-                    ' | '.join(model_names) +
+                    ' | '.join(load_model.model_arches('cifar')) +
                     ' (default: resnet18)')
 # Miscs
 parser.add_argument('--seed', type=int, default=42, help='manual seed')
@@ -47,12 +37,10 @@ args = parser.parse_args()
 use_cuda = torch.cuda.is_available() and True
 
 # Random seed
-np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 if use_cuda:
     torch.cuda.manual_seed_all(args.seed)
 
-global_record = ActivationRecord()
 assert args.grouped
 
 
@@ -64,57 +52,23 @@ def main():
         num_workers=args.workers,
         pin_memory=False)
 
-    # cudnn.benchmark = True
-    print('==> Resuming from checkpoint..')
-    assert os.path.isfile(args.resume), 'Error: no checkpoint found!'
-    if use_cuda:
-        checkpoint = torch.load(args.resume)
-    else:
-        checkpoint = torch.load(args.resume, map_location=torch.device('cpu'))
-    # config = checkpoint['cfg']
-    # model = models.__dict__[args.arch](dataset=args.dataset, depth=19, cfg=config)
-    model = models.__dict__[args.arch](num_classes=10)
-    if use_cuda:
-        model.cuda()
-    state_dict = {}
-    for k, v in checkpoint['state_dict'].items():
-        state_dict[k.replace('module.', '')] = v
-    model.load_state_dict(state_dict)
+    model = load_model.load_pretrain_model(
+        args.arch, 'cifar', args.resume, dataset.num_classes, use_cuda)
+
     print('\nMake a test run to generate activations. \n Using training set.\n')
-    collect_pruning_data(pruning_loader, model, use_cuda)
-    candidates_by_layer = global_record.generate_pruned_candidates()
+    with ActivationRecord(model) as recorder:
+        # collect pruning data
+        bar = tqdm(total=len(pruning_loader))
+        for batch_idx, (inputs, _) in enumerate(pruning_loader):
+            bar.update(batch_idx)
+            if use_cuda:
+                inputs = inputs.cuda()
+            recorder.record_batch(inputs)
+        candidates_by_layer = recorder.generate_pruned_candidates()
+
     with open(f"prune_candidate_logs/class_({'_'.join(str(n) for n in args.grouped)})_apoz_layer_thresholds.npy", "wb") as f:
         pickle.dump(candidates_by_layer, f)
     print(candidates_by_layer)
-
-
-def collect_pruning_data(pruning_loader, model, use_cuda):
-    batch_time = AverageMeter()
-    data_time = AverageMeter()
-    if use_cuda:
-        model.cuda()
-    global_record.apply_hook(model)
-
-    # guanhua
-    print('===EVAL===')
-
-    end = time.time()
-    bar = tqdm(total=len(pruning_loader))
-    for batch_idx, (inputs, _) in enumerate(pruning_loader):
-        bar.update(batch_idx)
-        # measure data loading time
-        data_time.update(time.time() - end)
-
-        if use_cuda:
-            inputs = inputs.cuda()
-
-        with global_record.record():
-            # we do not neet the output
-            _ = model(inputs)
-
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
 
 
 if __name__ == '__main__':

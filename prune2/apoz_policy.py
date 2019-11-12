@@ -34,12 +34,16 @@ def avg_scoring(activation):
 
 
 class ActivationRecord:
-    def __init__(self):
+    def __init__(self, model):
         self.apoz_scores_by_layer = []
         self.avg_scores_by_layer = []
         self.num_batches = 0
         self.layer_idx = 0
         self._candidates_by_layer = None
+        self._model = model
+        # switch to evaluate mode
+        self._model.eval()
+        self._model.apply(lambda m: m.register_forward_hook(self._hook))
 
     def parse_activation(self, feature_map):
         apoz_score = apoz_scoring(feature_map).numpy()
@@ -53,33 +57,29 @@ class ActivationRecord:
             self.avg_scores_by_layer[self.layer_idx] += avg_score
         self.layer_idx += 1
 
-    @contextlib.contextmanager
-    def record(self):
-        no_grad = torch.no_grad()
-        yield no_grad.__enter__()
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        for score in self.apoz_scores_by_layer:
+            score /= self.num_batches
+        for score in self.avg_scores_by_layer:
+            score /= self.num_batches
+
+    def record_batch(self, *args, **kwargs):
+        # reset layer index
         self.layer_idx = 0
+        with torch.no_grad():
+            # output is not used
+            _ = self._model(*args, **kwargs)
         self.num_batches += 1
-        no_grad.__exit__()
 
     def _hook(self, module, input, output):
         """Apply a hook to RelU layer"""
         if module.__class__.__name__ == 'ReLU':
             self.parse_activation(output)
 
-    def apply_hook(self, model):
-        # switch to evaluate mode
-        model.eval()
-        model.apply(lambda m: m.register_forward_hook(self._hook))
-
     def generate_pruned_candidates(self):
-        if self._candidates_by_layer is not None:
-            logger.warning("candicates have been computated")
-            return self._candidates_by_layer
-        for score in self.apoz_scores_by_layer:
-            score /= self.num_batches
-        for score in self.avg_scores_by_layer:
-            score /= self.num_batches
-
         num_layers = len(self.apoz_scores_by_layer)
         thresholds = [73] * num_layers
         avg_thresholds = [0.01] * num_layers
@@ -96,5 +96,6 @@ class ActivationRecord:
             difference_candidates = list(
                 set(candidates).difference(set(avg_candidates)))
             candidates_by_layer.append(difference_candidates)
-        print(f"Total pruned candidates: {sum(len(l) for l in candidates_by_layer)}")
+        print(
+            f"Total pruned candidates: {sum(len(l) for l in candidates_by_layer)}")
         return candidates_by_layer
