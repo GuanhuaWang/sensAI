@@ -81,6 +81,8 @@ class GroupedModel(nn.Module):
         num_params = []
         num_flops = []
 
+        print("\n===== Metrics for grouped model ==========================\n")
+
         for group_id, model in zip(self.group_info, self.model_list):
             n_params = sum(p.numel() for p in model.parameters()) / 10**6
             num_params.append(n_params)
@@ -193,14 +195,14 @@ def test_list(testloader, model, criterion, use_cuda):
         ))
     bar.close()
 
-    print("===== Full Confusion Matrix ===========================")
+    print("\n===== Full Confusion Matrix ==================================\n")
     if confusion_matrix.shape[0] < 20:
         print(confusion_matrix)
     else:
         print("Warning: The original confusion matrix is too big to fit into the screen. "
               "Skip printing the matrix.")
 
-    print("===== Inter-group Confusion Matrix ===========================")
+    print("\n===== Inter-group Confusion Matrix ===========================\n")
     print(f"Group info: {[group for group in model.group_info]}")
     n_groups = len(model.group_info)
     group_confusion_matrix = np.zeros((n_groups, n_groups))
@@ -215,7 +217,7 @@ def test_list(testloader, model, criterion, use_cuda):
     group_confusion_matrix /= group_confusion_matrix.sum(axis=-1)[:, np.newaxis]
     print(group_confusion_matrix)
 
-    print("===== In-group Confusion Matrix ===========================")
+    print("\n===== In-group Confusion Matrix ==============================\n")
     for group in model.group_info:
         print(f"group {group}")
         inter_group_matrix = confusion_matrix[group, :][:, group]
