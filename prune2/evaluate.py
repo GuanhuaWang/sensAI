@@ -30,15 +30,16 @@ import itertools
 from compute_flops import print_model_param_flops
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10/100 Testing')
+# Checkpoints
+parser.add_argument('model_dir', type=str, metavar='PATH',
+                    help='path to the directory of pruned models (default: none)')
 # Datasets
 parser.add_argument('-d', '--dataset', default='cifar10', type=str)
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--test-batch', default=128, type=int, metavar='N',
                     help='test batchsize')
-# Checkpoints
-parser.add_argument('--resume', default='', type=str, metavar='PATH',
-                    help='path to latest checkpoint (default: none)')
+
 # Miscs
 parser.add_argument('--seed', type=int, default=42, help='manual seed')
 args = parser.parse_args()
@@ -91,13 +92,14 @@ class GroupedModel(nn.Module):
         print(f"Average number of param: {sum(num_params) / len(num_params)} M")
 
 
-def load_pruned_models(resume):
-    file_names = [f for f in glob.glob(resume + "*.pth", recursive=False)]
+def load_pruned_models(model_dir):
+    if not model_dir.endswith('/'):
+        model_dir += '/'
+    file_names = [f for f in glob.glob(model_dir + "*.pth", recursive=False)]
     group_id_list = [re.search('\(([^)]+)', f_name).group(1)
                      for f_name in file_names]
-    print(resume)
-    print(file_names)
-    print(group_id_list)
+
+    print(f"Grouping settings found: {group_id_list}")
 
     assert bool(file_names) and bool(
         group_id_list), "No files found. Maybe wrong directory?"
@@ -133,7 +135,7 @@ def main():
 
     cudnn.benchmark = True
     criterion = nn.CrossEntropyLoss()  # if not args.bce else nn.BCEWithLogitsLoss()
-    model = load_pruned_models(args.resume)
+    model = load_pruned_models(args.model_dir)
 
     test_acc = test_list(testloader, model, criterion, use_cuda)
 

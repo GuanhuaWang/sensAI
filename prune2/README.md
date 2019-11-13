@@ -20,6 +20,6 @@ After above script runs, retrained model located at specified save dir <br>
 7) To evaluate, <br>
 
   ```bash
-  python3 evaluate.py --test-batch 128 --resume ./PATH_TO_RETRAIN_SAVED_DIR/
+  python3 evaluate.py ./PATH_TO_RETRAIN_SAVED_DIR/ --test-batch 128
   ```
 
