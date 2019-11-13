@@ -1,6 +1,8 @@
 # sensAI_experiments
 
-Most of the experiments are run with `pytorch ver. 0.3.1.post2`
+Most of the experiments are run with `pytorch ver. 0.4.1`
+
+`siyuan_prune` is a branch for grouping binary classifiers on CIFAR10/100.
 
 ## Get baseline fully-trained model
 
