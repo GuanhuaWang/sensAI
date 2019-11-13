@@ -18,7 +18,7 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import models.cifar as models
-from datasets import cifar10
+from datasets import cifar
 
 from utils import Bar, Logger, AverageMeter, accuracy, accuracy_binary, mkdir_p, savefig
 
@@ -124,23 +124,25 @@ def main():
     class_indices = [int(c) for c in group_id.replace("_", "")]
 
     if args.dataset == 'cifar10':
-        # dataloader = datasets.CIFAR10
-        trainset = cifar10.CIFAR10TrainingSetWrapper(class_indices, True)
-        trainloader = torch.utils.data.DataLoader(
+        trainset = cifar.CIFAR10TrainingSetWrapper(class_indices, True)
+        testset = cifar.CIFAR10TestingSetWrapper(class_indices, True)
+    elif args.dataset == 'cifar100':
+        trainset = cifar.CIFAR100TrainingSetWrapper(class_indices, True)
+        testset = cifar.CIFAR100TestingSetWrapper(class_indices, True)
+    else:
+        raise NotImplementedError(f"There's no support for '{args.dataset}' dataset.")
+
+    trainloader = torch.utils.data.DataLoader(
             trainset,
             batch_size=64,
             num_workers=args.workers,
             pin_memory=False)
-        testset = cifar10.CIFAR10TestingSetWrapper(class_indices, True)
-        testloader = torch.utils.data.DataLoader(
+    testloader = torch.utils.data.DataLoader(
             testset,
             batch_size=64,
             num_workers=args.workers,
             pin_memory=False)
-        num_classes = len(class_indices + 1)
-    else:
-        dataloader = datasets.CIFAR100
-        num_classes = 100
+    num_classes = len(class_indices + 1)
 
     if not args.pruned:
         # Model

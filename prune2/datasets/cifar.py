@@ -35,3 +35,17 @@ class CIFAR10TestingSetWrapper(utils.DataSetWrapper):
         dataset = datasets.CIFAR10(root=CIFAR10_DATASET_ROOT, train=False,
                                    download=True, transform=transform_no_aug)
         super().__init__(dataset, class_group, negative_samples)
+
+
+class CIFAR100TrainingSetWrapper(utils.DataSetWrapper):
+    def __init__(self, class_group: Tuple[int], negative_samples=False):
+        dataset = datasets.CIFAR100(root=CIFAR10_DATASET_ROOT, train=True,
+                                    download=True, transform=transform_with_aug)
+        super().__init__(dataset, class_group, negative_samples)
+
+
+class CIFAR100TestingSetWrapper(utils.DataSetWrapper):
+    def __init__(self, class_group: Tuple[int], negative_samples=False):
+        dataset = datasets.CIFAR100(root=CIFAR10_DATASET_ROOT, train=False,
+                                    download=True, transform=transform_no_aug)
+        super().__init__(dataset, class_group, negative_samples)

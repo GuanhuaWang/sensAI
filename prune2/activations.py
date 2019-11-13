@@ -6,7 +6,7 @@ from torch import nn
 import torch.backends.cudnn as cudnn
 
 from apoz_policy import ActivationRecord
-from datasets import cifar10
+from datasets import cifar
 import load_model
 from tqdm import tqdm
 
@@ -27,8 +27,6 @@ parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet20',
                     ' (default: resnet18)')
 # Miscs
 parser.add_argument('--seed', type=int, default=42, help='manual seed')
-parser.add_argument('--class-index', default=0, type=int,
-                    help='class index for class specific activation')
 parser.add_argument('--grouped', required=True, type=int, nargs='+', default=[],
                     help='Generate activations based on the these class indices')
 
@@ -45,7 +43,14 @@ assert args.grouped
 
 
 def main():
-    dataset = cifar10.CIFAR10TrainingSetWrapper(args.grouped, False)
+    if args.dataset == 'cifar10':
+        dataset = cifar.CIFAR10TrainingSetWrapper(args.grouped, False)
+    elif args.dataset == 'cifar100':
+        dataset = cifar.CIFAR100TrainingSetWrapper(args.grouped, False)
+    else:
+        raise NotImplementedError(
+            f"There's no support for '{args.dataset}' dataset.")
+
     pruning_loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=1000,
