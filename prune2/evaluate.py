@@ -192,9 +192,16 @@ def test_list(testloader, model, criterion, use_cuda):
             top5=top5.avg,
         ))
     bar.close()
-    print(confusion_matrix)
 
-    print(f"group info {[group for group in model.group_info]}")
+    print("===== Full Confusion Matrix ===========================")
+    if confusion_matrix.shape[0] < 20:
+        print(confusion_matrix)
+    else:
+        print("Warning: The original confusion matrix is too big to fit into the screen. "
+              "Skip printing the matrix.")
+
+    print("===== Inter-group Confusion Matrix ===========================")
+    print(f"Group info: {[group for group in model.group_info]}")
     n_groups = len(model.group_info)
     group_confusion_matrix = np.zeros((n_groups, n_groups))
     for i in range(n_groups):
@@ -208,6 +215,7 @@ def test_list(testloader, model, criterion, use_cuda):
     group_confusion_matrix /= group_confusion_matrix.sum(axis=-1)[:, np.newaxis]
     print(group_confusion_matrix)
 
+    print("===== In-group Confusion Matrix ===========================")
     for group in model.group_info:
         print(f"group {group}")
         inter_group_matrix = confusion_matrix[group, :][:, group]
