@@ -97,10 +97,7 @@ def main():
     print('\nMake a test run to generate groups. \n Using training set.\n')
     with tqdm(total=len(data_loader)) as bar:
         for batch_idx, (inputs, targets) in enumerate(data_loader):
-            if batch_idx > 2:
-                break
             bar.update()
-            print(batch_idx, len(data_loader))
             if use_cuda:
                 inputs = inputs.cuda()
             with torch.no_grad():
@@ -111,8 +108,11 @@ def main():
     all_features = torch.cat(all_features)
     all_targets = torch.cat(all_targets)
 
-    groups = kmeans_grouping(all_features, all_targets, args.ngroups)
-    print(groups)
+    groups = kmeans_grouping(all_features, all_targets,
+                             args.ngroups, same_group_size=True)
+    print("\n====================== Grouping Result ========================\n")
+    for i, group in enumerate(groups):
+        print(f"Group #{i}: {' '.join(str(idx) for idx in group)}")
 
 
 if __name__ == '__main__':

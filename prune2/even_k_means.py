@@ -31,16 +31,37 @@ def _labels_inertia(X, sample_weight, x_squared_norms, centers, distances, same_
     """
     sample_weight = _check_sample_weight(X, sample_weight)
     n_samples = X.shape[0]
+    n_clusters = centers.shape[0]
 
-    # Breakup nearest neighbor distance computation into batches to prevent
-    # memory blowup in the case of a large number of samples and clusters.
-    # TODO: Once PR #7383 is merged use check_inputs=False in metric_kwargs.
-    labels, mindist = pairwise_distances_argmin_min(
-        X=X, Y=centers, metric='euclidean', metric_kwargs={'squared': True})
+    # See http://jmonlong.github.io/Hippocamplus/2018/06/09/cluster-same-size/#same-size-k-means-variation
+    if same_cluster_size:
+        cluster_size = n_samples // n_clusters
+        labels = np.zeros(n_samples, dtype=np.int32)
+        mindist = np.zeros(n_samples, dtype=np.float32)
+        # count how many samples have been labeled in a cluster
+        counters = np.zeros(n_clusters, dtype=np.int32)
+        # dist: (n_samples, n_clusters)
+        dist = euclidean_distances(X, centers, squared=False)
+        closeness = dist.min(axis=-1) - dist.max(axis=-1)
+        ranking = np.argsort(closeness)
+        for r in ranking:
+            while True:
+                label = dist[r].argmin()
+                if counters[label] < cluster_size:
+                    labels[r] = label
+                    counters[label] += 1
+                    # squared distances are used for inertia in this function
+                    mindist[r] = dist[r, label] ** 2
+                    break
+                else:
+                    dist[r, label] = np.inf
+    else:
+        # Breakup nearest neighbor distance computation into batches to prevent
+        # memory blowup in the case of a large number of samples and clusters.
+        # TODO: Once PR #7383 is merged use check_inputs=False in metric_kwargs.
+        labels, mindist = pairwise_distances_argmin_min(
+            X=X, Y=centers, metric='euclidean', metric_kwargs={'squared': True})
 
-    dist = euclidean_distances(X, centers, squared=True)
-
-    print(dist.shape)
     # cython k-means code assumes int32 inputs
     labels = labels.astype(np.int32, copy=False)
     if n_samples == distances.shape[0]:
@@ -157,6 +178,9 @@ def kmeans_lloyd(X, sample_weight, n_clusters, max_iter=300,
     random_state = check_random_state(random_state)
     if same_cluster_size:
         assert len(X) % n_clusters == 0, "#samples is not divisible by #clusters"
+
+    if verbose:
+        print("\n==> Starting k-means clustering...\n")
 
     sample_weight = _check_sample_weight(X, sample_weight)
     x_squared_norms = row_norms(X, squared=True)
