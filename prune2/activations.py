@@ -65,7 +65,7 @@ def main():
         # collect pruning data
         bar = tqdm(total=len(pruning_loader))
         for batch_idx, (inputs, _) in enumerate(pruning_loader):
-            bar.update(batch_idx)
+            bar.update(1)
             if use_cuda:
                 inputs = inputs.cuda()
             recorder.record_batch(inputs)

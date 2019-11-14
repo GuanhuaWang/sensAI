@@ -159,7 +159,7 @@ def test_list(testloader, model, criterion, use_cuda):
     bar = tqdm(total=len(testloader))
     # pdb.set_trace()
     for batch_idx, (inputs, targets) in enumerate(testloader):
-        bar.update(batch_idx)
+        bar.update(1)
         # measure data loading time
         data_time.update(time.time() - end)
         if use_cuda:
