@@ -6,11 +6,12 @@ import models.cifar as cifar_models
 
 def model_arches(dataset):
     if dataset == 'cifar':
-        model_names = sorted(name for name in cifar_models.__dict__
+        return sorted(name for name in cifar_models.__dict__
                              if name.islower() and not name.startswith("__")
                              and callable(cifar_models.__dict__[name]))
     else:
         raise NotImplementedError
+
 
 
 def load_pretrain_model(arch, dataset, resume_checkpoint, num_classes, use_cuda):
