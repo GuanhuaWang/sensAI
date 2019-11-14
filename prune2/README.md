@@ -1,4 +1,10 @@
 
+0) Generate groups by running:
+
+   ```bash
+   python3 group_selection.py --arch=vgg19_bn --resume=vgg19bn-cifar100.pth.tar --dataset=cifar100 --ngroups=10
+   ```
+
 1) Specify pruning parameters in apoz_policy.py, activations.py <br>
    [Can make program arguments that take parameters if heavy parameter tuning is needed] <br>
 

@@ -28,10 +28,11 @@ class VGG(nn.Module):
         self.classifier = nn.Linear(512, num_classes)
         self._initialize_weights()
 
-    def forward(self, x):
+    def forward(self, x, features_only=False):
         x = self.features(x)
         x = x.view(x.size(0), -1)
-        x = self.classifier(x)
+        if not features_only:
+            x = self.classifier(x)
         return x
 
     def _initialize_weights(self):
