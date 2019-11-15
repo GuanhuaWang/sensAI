@@ -15,7 +15,7 @@
 4) Pruning candidate now stored in ./prune_candidate_logs <br>
 
 5) Generate pruned model, run   <br>
-   python3 prune_and_get_model.py -a vgg19_bn --resume ./checkpoint_bearclaw.pth.tar  -c ./prune_candidate_logs/ -s ./TO_SAVE_MODEL_BASE_DIR <br>
+   python3 prune_and_get_model.py -a vgg19_bn -d cifar100 --resume ./checkpoint_bearclaw.pth.tar  -c ./prune_candidate_logs/ -s ./TO_SAVE_MODEL_BASE_DIR <br>
    Models now saved at location, `./TO_SAVE_MODEL_BASE_DIR` <br>
 
 6) Specify from dir (pruned models) and save dir (pruned and retrained models), and training parameters in <br>
