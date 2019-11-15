@@ -181,15 +181,16 @@ def main():
     else:
         print("==> Loading pruned model with some existing weights '{}'".format(args.arch))
         model = torch.load(args.resume)
-        # model.cpu()
-        model = torch.nn.DataParallel(model).cuda()
+        if use_cuda:
+            model.cuda()
 
     start_epoch = args.start_epoch  # start from epoch 0 or last checkpoint epoch
 
     if not os.path.isdir(args.checkpoint):
         mkdir_p(args.checkpoint)
 
-    model = torch.nn.DataParallel(model).cuda()
+    if use_cuda:
+        model.cuda()
     # model = model.cpu()
     cudnn.benchmark = True
     print('    Total params: %.2fM' % (sum(p.numel()
