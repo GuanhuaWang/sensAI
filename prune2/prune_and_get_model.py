@@ -11,11 +11,15 @@ import pickle
 
 import torch
 import torch.nn as nn
+import torchvision.datasets as datasets
+
 
 # TODO change it to relative directory
 sys.path.append('/home/ubuntu/zihao/rona_experiments/pytorch-classification')
 
 parser = argparse.ArgumentParser(description='VGG with mask layer on cifar10')
+parser.add_argument('-d', '--dataset', required=True,
+                    default='cifar10', type=str)
 parser.add_argument('-c', '--prune-candidates', default="./prune_candidate_logs",
                     type=str, help='Directory which stores the prune candidates for each model')
 parser.add_argument('-a', '--arch', default='vgg19_bn',
@@ -34,10 +38,18 @@ file_names = [f for f in glob.glob(path + "*.npy", recursive=False)]
 group_id_list = [re.search('\(([^)]+)', f_name).group(1)
                  for f_name in file_names]
 
-num_classes = 10  # len(group_id_list)
-
 
 def main():
+    print('==> Preparing dataset %s' % args.dataset)
+    if args.dataset == 'cifar10':
+        dataset_loader = datasets.CIFAR10
+    elif args.dataset == 'cifar100':
+        dataset_loader = datasets.CIFAR100
+    else:
+        raise NotImplementedError
+
+    num_classes = len(dataset_loader.classes)
+
     # create pruned model save path
     model_save_directory = os.path.join(args.save, args.arch)
     pathlib.Path(model_save_directory).mkdir(parents=True, exist_ok=True)

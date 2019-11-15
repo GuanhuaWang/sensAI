@@ -118,8 +118,10 @@ def main():
     print('==> Preparing dataset %s' % args.dataset)
     if args.dataset == 'cifar10':
         dataset_loader = datasets.CIFAR10
-    else:
+    elif args.dataset == 'cifar100':
         dataset_loader = datasets.CIFAR100
+    else:
+        raise NotImplementedError
 
     testloader = data.DataLoader(
         dataset_loader(
