@@ -142,7 +142,7 @@ def main():
             batch_size=64,
             num_workers=args.workers,
             pin_memory=False)
-    num_classes = len(class_indices + 1)
+    num_classes = len(class_indices) + 1
 
     if not args.pruned:
         # Model
