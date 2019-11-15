@@ -121,7 +121,7 @@ def main():
     # checkpoint_name = args.arch + '_(' + group_id + ')_' + 'pruned_group_model'
     model_prefix = args.checkpoint + args.arch + \
         '_(' + group_id + ')_' + 'pruned_group_model'
-    class_indices = [int(c) for c in group_id.replace("_", "")]
+    class_indices = [int(c) for c in group_id.split("_")]
 
     if args.dataset == 'cifar10':
         trainset = cifar.CIFAR10TrainingSetWrapper(class_indices, True)
@@ -205,7 +205,6 @@ def main():
     # Resume
     title = 'cifar-10-' + args.arch
     if args.resume and not args.pruned:
-        pass
         # Load checkpoint.
         print('==> Resuming from checkpoint..')
         assert os.path.isfile(

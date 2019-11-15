@@ -36,6 +36,8 @@ class DataSetWrapper(object):
         data, label = self.dataset[index]
         if label in self.class_group:
             label = self.class_group.index(label) + 1
+        else:
+            label = 0
         return data, label
 
     def __len__(self):
