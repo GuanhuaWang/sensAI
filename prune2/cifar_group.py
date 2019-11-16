@@ -134,12 +134,12 @@ def main():
 
     trainloader = torch.utils.data.DataLoader(
             trainset,
-            batch_size=64,
+            batch_size=args.train_batch,
             num_workers=args.workers,
             pin_memory=False)
     testloader = torch.utils.data.DataLoader(
             testset,
-            batch_size=64,
+            batch_size=args.test_batch,
             num_workers=args.workers,
             pin_memory=False)
     num_classes = len(class_indices) + 1

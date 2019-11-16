@@ -24,8 +24,7 @@ class DataSetWrapper(object):
             extented_indices = np.repeat(positive_class_indices, repeat_n)[
                 :negative_class_len-positive_class_len]
             # fuse and shuffle
-            fullset = np.concatenate(
-                [np.ones_like(self.targets, dtype=bool), extented_indices])
+            fullset = np.concatenate([self.targets.copy(), extented_indices])
             np.random.shuffle(fullset)
             self.mapping = fullset
         else:
