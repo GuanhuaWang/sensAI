@@ -1,5 +1,6 @@
 from typing import Tuple
 import numpy as np
+import math
 
 
 class DataSetWrapper(object):
@@ -16,15 +17,19 @@ class DataSetWrapper(object):
             positive_mask |= (self.targets == class_index)
         positive_class_indices = np.where(positive_mask)[0]
         if negative_samples:
-            # extend number of positive instances to the number of negative ones
-            positive_class_len = len(positive_class_indices)
-            negative_class_len = len(self.targets) - positive_class_len
-            assert negative_class_len >= positive_class_len, "there are already more positive classes"
-            repeat_n = negative_class_len // positive_class_len
-            extented_indices = np.repeat(positive_class_indices, repeat_n)[
-                :negative_class_len-positive_class_len]
+            # For N negative samples, P positive samples, we need to append
+            # (k * N - P) positive samples.
+            k = len(class_group)
+            P = len(positive_class_indices)
+            N = len(self.targets) - P
+            assert N >= P, "there are already more positive classes"
+            ext_P = k * N - P
+            repeat_n = math.ceil(ext_P / P)
+            extented_indices = np.repeat(
+                positive_class_indices, repeat_n)[:ext_P]
             # fuse and shuffle
-            fullset = np.concatenate([self.targets.copy(), extented_indices])
+            all_indices = np.arange(len(self.targets))
+            fullset = np.concatenate([all_indices, extented_indices])
             np.random.shuffle(fullset)
             self.mapping = fullset
         else:
@@ -44,4 +49,4 @@ class DataSetWrapper(object):
 
     @property
     def num_classes(self):
-        return len(self.dataset.classes)
+        return len(self.class_group) + 1
