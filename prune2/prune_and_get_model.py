@@ -18,8 +18,7 @@ import torchvision.datasets as datasets
 sys.path.append('/home/ubuntu/zihao/rona_experiments/pytorch-classification')
 
 parser = argparse.ArgumentParser(description='VGG with mask layer on cifar10')
-parser.add_argument('-d', '--dataset', required=True,
-                    default='cifar10', type=str)
+parser.add_argument('-d', '--dataset', required=True, type=str)
 parser.add_argument('-c', '--prune-candidates', default="./prune_candidate_logs",
                     type=str, help='Directory which stores the prune candidates for each model')
 parser.add_argument('-a', '--arch', default='vgg19_bn',

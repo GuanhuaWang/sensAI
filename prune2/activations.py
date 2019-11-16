@@ -14,7 +14,7 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser(
     description='PyTorch CIFAR10/100 Generate Class Specific Information')
 # Datasets
-parser.add_argument('-d', '--dataset', default='cifar10', type=str)
+parser.add_argument('-d', '--dataset', required=True, type=str)
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--resume', required=True, default='', type=str, metavar='PATH',
