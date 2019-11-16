@@ -347,8 +347,8 @@ def test(testloader, model, criterion, epoch, use_cuda):
 
     end = time.time()
     with tqdm.tqdm(total=len(testloader)) as bar:
-        bar.update()
         for batch_idx, (inputs, targets) in enumerate(testloader):
+            bar.update()
             # measure data loading time
             data_time.update(time.time() - end)
 

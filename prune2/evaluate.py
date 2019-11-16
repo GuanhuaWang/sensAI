@@ -156,7 +156,12 @@ def test_list(testloader, model, criterion, use_cuda):
     model.eval()
     end = time.time()
 
-    confusion_matrix = np.zeros((10, 10))
+    if args.dataset == 'cifar10':
+        confusion_matrix = np.zeros((10, 10))
+    elif args.dataset == 'cifar100':
+        confusion_matrix = np.zeros((100, 100))
+    else:
+        raise NotImplementedError
 
     bar = tqdm(total=len(testloader))
     # pdb.set_trace()

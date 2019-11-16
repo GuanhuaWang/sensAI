@@ -1,8 +1,5 @@
 import torch
-from torch.autograd import Variable
 from torchvision import models
-import cv2
-import sys
 import numpy as np
  
 def replace_layers(model, i, indexes, layers):
