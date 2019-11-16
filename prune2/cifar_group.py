@@ -19,8 +19,9 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import models.cifar as models
 from datasets import cifar
+import tqdm
 
-from utils import Bar, Logger, AverageMeter, accuracy, accuracy_binary, mkdir_p, savefig
+from utils import Logger, AverageMeter, accuracy, accuracy_binary, mkdir_p, savefig
 
 import re
 model_names = sorted(name for name in models.__dict__
@@ -273,63 +274,62 @@ def train(trainloader, model, criterion, optimizer, epoch, use_cuda):
     top5 = AverageMeter()
     end = time.time()
 
-    bar = Bar('Processing', max=len(trainloader))
-    for batch_idx, (inputs, targets) in enumerate(trainloader):
-        # measure data loading time
-        data_time.update(time.time() - end)
+    with tqdm.tqdm(total=len(trainloader)) as bar:
+        for batch_idx, (inputs, targets) in enumerate(trainloader):
+            bar.update()
+            # measure data loading time
+            data_time.update(time.time() - end)
 
-        if use_cuda:
-            inputs, targets = inputs.cuda(), targets.cuda()
+            if use_cuda:
+                inputs, targets = inputs.cuda(), targets.cuda()
 
-        # compute output
-        outputs = model(inputs)
+            # compute output
+            outputs = model(inputs)
 
-        if args.bce:
-            loss = 0.0
-            for i in range(outputs.shape[1]):
-                out = (outputs[:, i].flatten())
-                targ = targets.eq(i+1).float()
-                loss += criterion(outputs[:, i].flatten(),
-                                  targets.eq(i+1).float())
-        else:
-            loss = criterion(outputs, targets)
+            if args.bce:
+                loss = 0.0
+                for i in range(outputs.shape[1]):
+                    out = (outputs[:, i].flatten())
+                    targ = targets.eq(i+1).float()
+                    loss += criterion(outputs[:, i].flatten(),
+                                    targets.eq(i+1).float())
+            else:
+                loss = criterion(outputs, targets)
 
-        # measure accuracy and record loss
-        if not args.bce:
-            prec1, prec5 = accuracy(outputs.data, targets.data, topk=(1, 2))
-        else:
-            prec1 = max([accuracy_binary(outputs.data[:, i], targets.data)
-                         for i in range(outputs.shape[1])])
-        losses.update(loss.item(), inputs.size(0))
-        if not args.bce:
-            top1.update(prec1.item(), inputs.size(0))
-            top5.update(prec5.item(), inputs.size(0))
-        else:
-            top1.update(prec1, inputs.size(0))
+            # measure accuracy and record loss
+            if not args.bce:
+                prec1, prec5 = accuracy(outputs.data, targets.data, topk=(1, 2))
+            else:
+                prec1 = max([accuracy_binary(outputs.data[:, i], targets.data)
+                            for i in range(outputs.shape[1])])
+            losses.update(loss.item(), inputs.size(0))
+            if not args.bce:
+                top1.update(prec1.item(), inputs.size(0))
+                top5.update(prec5.item(), inputs.size(0))
+            else:
+                top1.update(prec1, inputs.size(0))
 
-        # compute gradient and do SGD step
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+            # compute gradient and do SGD step
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
+            # measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
 
-        # plot progress
-        bar.suffix = '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f} | top5: {top5: .4f}'.format(
-            batch=batch_idx + 1,
-            size=len(trainloader),
-            data=data_time.avg,
-            bt=batch_time.avg,
-            total=bar.elapsed_td,
-            eta=bar.eta_td,
-            loss=losses.avg,
-            top1=top1.avg,
-            top5=top5.avg,
-        )
-        bar.next()
-    bar.finish()
+            # plot progress
+            bar.set_description('({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f} | top5: {top5: .4f}'.format(
+                batch=batch_idx + 1,
+                size=len(trainloader),
+                data=data_time.avg,
+                bt=batch_time.avg,
+                total='N/A' or bar.elapsed_td,
+                eta='N/A' or bar.eta_td,
+                loss=losses.avg,
+                top1=top1.avg,
+                top5=top5.avg,
+            ))
     return (losses.avg, top1.avg)
 
 
@@ -346,59 +346,59 @@ def test(testloader, model, criterion, epoch, use_cuda):
     model.eval()
 
     end = time.time()
-    bar = Bar('Processing', max=len(testloader))
-    for batch_idx, (inputs, targets) in enumerate(testloader):
-        # measure data loading time
-        data_time.update(time.time() - end)
+    with tqdm.tqdm(total=len(testloader)) as bar:
+        bar.update()
+        for batch_idx, (inputs, targets) in enumerate(testloader):
+            # measure data loading time
+            data_time.update(time.time() - end)
 
-        if use_cuda:
-            inputs, targets = inputs.cuda(), targets.cuda()
-        with torch.no_grad():
-            # compute output
-            outputs = model(inputs)
-            if args.bce:
-                # print('outputs', outputs[0])
-                # print('target', targets[0])
-                loss = 0.0
-                for i in range(outputs.shape[1]):
-                    loss += criterion(outputs[:, i].flatten(),
-                                      targets.eq(i+1).float())
-            #    loss = criterion(outputs.flatten(), targets.float())
-            else:
-                loss = criterion(outputs, targets)
+            if use_cuda:
+                inputs, targets = inputs.cuda(), targets.cuda()
+            with torch.no_grad():
+                # compute output
+                outputs = model(inputs)
+                if args.bce:
+                    # print('outputs', outputs[0])
+                    # print('target', targets[0])
+                    loss = 0.0
+                    for i in range(outputs.shape[1]):
+                        loss += criterion(outputs[:, i].flatten(),
+                                        targets.eq(i+1).float())
+                #    loss = criterion(outputs.flatten(), targets.float())
+                else:
+                    loss = criterion(outputs, targets)
 
-            # measure accuracy and record loss
+                # measure accuracy and record loss
+                if not args.bce:
+                    prec1, prec5 = accuracy(
+                        outputs.data, targets.data, topk=(1, 2))
+                else:
+                    prec1 = max([accuracy_binary(outputs.data[:, i], targets.data)
+                                for i in range(outputs.shape[1])])
+            losses.update(loss.item(), inputs.size(0))
             if not args.bce:
-                prec1, prec5 = accuracy(
-                    outputs.data, targets.data, topk=(1, 2))
+                top1.update(prec1.item(), inputs.size(0))
+                top5.update(prec5.item(), inputs.size(0))
             else:
-                prec1 = max([accuracy_binary(outputs.data[:, i], targets.data)
-                             for i in range(outputs.shape[1])])
-        losses.update(loss.item(), inputs.size(0))
-        if not args.bce:
-            top1.update(prec1.item(), inputs.size(0))
-            top5.update(prec5.item(), inputs.size(0))
-        else:
-            top1.update(prec1, inputs.size(0))
+                top1.update(prec1, inputs.size(0))
 
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
+            # measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
 
-        # plot progress
-        bar.suffix = '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f} | top5: {top5: .4f}'.format(
-            batch=batch_idx + 1,
-            size=len(testloader),
-            data=data_time.avg,
-            bt=batch_time.avg,
-            total=bar.elapsed_td,
-            eta=bar.eta_td,
-            loss=losses.avg,
-            top1=top1.avg,
-            top5=top5.avg,
-        )
-        bar.next()
-    bar.finish()
+            # plot progress
+            bar.set_description('({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f} | top5: {top5: .4f}'.format(
+                batch=batch_idx + 1,
+                size=len(testloader),
+                data=data_time.avg,
+                bt=batch_time.avg,
+                total='N/A' or bar.elapsed_td,
+                eta='N/A' or bar.eta_td,
+                loss=losses.avg,
+                top1=top1.avg,
+                top5=top5.avg,
+            ))
+
     return (losses.avg, top1.avg)
 
 
