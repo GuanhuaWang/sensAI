@@ -19,7 +19,7 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import numpy as np
-from utils import Bar, Logger, AverageMeter, accuracy, savefig
+from utils import Logger, AverageMeter, accuracy, savefig
 from torch.utils.data import Dataset, DataLoader
 
 import glob
@@ -196,6 +196,8 @@ def test_list(testloader, model, criterion, use_cuda):
             top5=top5.avg,
         ))
     bar.close()
+
+    np.set_printoptions(precision=3, linewidth=96)
 
     print("\n===== Full Confusion Matrix ==================================\n")
     if confusion_matrix.shape[0] < 20:
