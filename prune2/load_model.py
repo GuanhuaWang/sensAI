@@ -6,10 +6,9 @@ import models.cifar as cifar_models
 
 def model_arches(dataset):
     if dataset == 'cifar':
-        model_list = sorted(name for name in cifar_models.__dict__
+        return sorted(name for name in cifar_models.__dict__
                              if name.islower() and not name.startswith("__")
                              and callable(cifar_models.__dict__[name]))
-        model_list += ['resnet164', 'resnet110']
     else:
         raise NotImplementedError
 
