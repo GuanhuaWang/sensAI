@@ -6,9 +6,10 @@ import models.cifar as cifar_models
 
 def model_arches(dataset):
     if dataset == 'cifar':
-        return sorted(name for name in cifar_models.__dict__
+        model_list = sorted(name for name in cifar_models.__dict__
                              if name.islower() and not name.startswith("__")
                              and callable(cifar_models.__dict__[name]))
+        model_list += ['resnet164', 'resnet110']
     else:
         raise NotImplementedError
 
@@ -22,27 +23,15 @@ def load_pretrain_model(arch, dataset, resume_checkpoint, num_classes, use_cuda)
     else:
         checkpoint = torch.load(
             resume_checkpoint, map_location=torch.device('cpu'))
-    # config = checkpoint['cfg']
-    # model = models.__dict__[args.arch](dataset=args.dataset, depth=19, cfg=config)
     if dataset == 'cifar':
-        if arch.startswith('vgg'):
-            model = cifar_models.__dict__[arch](num_classes=num_classes)
-        elif arch.startswith('resnet'):
-            if arch == 'resnet164':
-                depth = 164
-                block_name = 'bottleneck'
-            elif arch == 'resnet110':
-                depth = 110
-                block_name = 'bottleneck'
-            else:
-                raise NotImplementedError(f"Unsupported resnet arch: {arch}.")
-            model = cifar_models.__dict__[arch](num_classes=num_classes, depth=depth, block_name=block_name)
+        model = cifar_models.__dict__[arch](num_classes=num_classes)  
     else:
-        raise NotImplementedError(f"Unsupported dataaset: {dataset}.")
+        raise NotImplementedError(f"Unsupported dataset: {dataset}.")
 
     if use_cuda:
         model.cuda()
     state_dict = {}
+    # deal with old torch version
     for k, v in checkpoint['state_dict'].items():
         state_dict[k.replace('module.', '')] = v
     model.load_state_dict(state_dict)

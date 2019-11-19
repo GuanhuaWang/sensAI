@@ -11,8 +11,6 @@ import torch.nn as nn
 import math
 
 
-__all__ = ['resnet']
-
 def conv3x3(in_planes, out_planes, stride=1):
     "3x3 convolution with padding"
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
@@ -143,7 +141,7 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x, features_only=False):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)    # 32x32
@@ -159,8 +157,18 @@ class ResNet(nn.Module):
         return x
 
 
-def resnet(**kwargs):
+def resnet110(**kwargs):
     """
-    Constructs a ResNet model.
+    Constructs a ResNet-110 model.
     """
-    return ResNet(**kwargs)
+    return ResNet(depth=110, block_name='basicblock', **kwargs)
+
+
+def resnet164(**kwargs):
+    """
+    Constructs a ResNet-164 model.
+    """
+    return ResNet(depth=164, block_name='basicblock', **kwargs)
+
+
+__all__ = ['resnet110', 'resnet164']
