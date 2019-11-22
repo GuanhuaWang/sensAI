@@ -1,5 +1,4 @@
 import torch
-from torch.autograd import Variable
 from torchvision import models
 import cv2
 import sys
@@ -7,7 +6,7 @@ import numpy as np
 from functools import partial
 import torch.nn as nn
 from models import *
- 
+
 def prune_resnet_conv_layer(model, layer_index, filter_index, use_batch_norm=False):
     conv = list(model.modules())[layer_index]
     next_conv = None
@@ -33,11 +32,11 @@ def prune_resnet_conv_layer(model, layer_index, filter_index, use_batch_norm=Fal
     old_weights = conv.weight.data.cpu().numpy()
     new_weights = new_conv.weight.data.cpu().numpy()
 
-#    old_weights = conv.weight.data.cpu().numpy()
-#    old_shape = old_weights.shape
-#    new_weights = np.zeros((old_shape[0]-1, old_shape[1], old_shape[2], old_shape[3]), dtype = 'f')
-#    print (old_weights.shape)
-#    print (new_weights.shape)
+    # old_weights = conv.weight.data.cpu().numpy()
+    # old_shape = old_weights.shape
+    # new_weights = np.zeros((old_shape[0]-1, old_shape[1], old_shape[2], old_shape[3]), dtype = 'f')
+    # print (old_weights.shape)
+    # print (new_weights.shape)
     print (filter_index)
     new_weights[:filter_index, :, :, :] = old_weights[:filter_index, :, :, :]
     new_weights[filter_index : , :, :, :] = old_weights[filter_index + 1 :, :, :, :]
@@ -140,8 +139,6 @@ def prune_first_conv_layer(model, layer_index, filter_index):
     return model
 
 def prune_selection_layer(model, layer_index, filters_to_remove):
-    conv = list(model.modules())[layer_index]
-
     # Find previous channel selection layer
     chan_sel = None
     offset = 1
