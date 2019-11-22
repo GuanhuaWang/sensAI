@@ -1,9 +1,6 @@
 import numpy as np
 import torch
 import contextlib
-import logging
-
-logger = logging.Logger(__name__)
 
 
 def apoz_scoring(activation):

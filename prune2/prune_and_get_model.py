@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 import torchvision.datasets as datasets
 import load_model
-from prune_utils import prune_resnet, prune_vgg16
+from prune_utils import prune_resnet, prune_vgg16, layer_prune
 
 import copy
 
@@ -60,7 +60,7 @@ def prune_vgg_main(model, candidates, group_indices):
 
 def prune_resnet_main(model, candidates, group_indices):
     conv_indices = [idx for idx, m in enumerate(
-        model.modules()) if isinstance(m,  nn.Conv2d)]
+        model.modules()) if isinstance(m, nn.Conv2d)]
 
     # don't prune first conv layer and downsample layers
     downsamples = [1, 13, 178, 343]
@@ -109,9 +109,10 @@ def prune_resnet_main(model, candidates, group_indices):
             model = prune_resnet.prune_resnet_conv_layer(
                 model, layer_index, filter_index, use_batch_norm=True)
             update_list(filters_to_remove)
-    # save the pruned model
-    # print(model.fc.bias.data)
-    model = prune_resnet.prune_last_fc_layer(model, i)
+
+    if model.fc is None:
+        raise ValueError("No linear layer found in classifier")
+    layer_prune.prune_linear_layer(model.fc, group_indices)
     return model
 
 
