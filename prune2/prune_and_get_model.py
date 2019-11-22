@@ -44,14 +44,8 @@ def prune_vgg_main(model, candidates, group_indices):
     for layer_index, filter_list in zip(conv_indices, candidates):
         filters_to_remove = list(filter_list)
         # filters_to_remove.sort()
-
-        while len(filters_to_remove):
-            filter_index = filters_to_remove.pop(0)
-            model = prune_vgg16.prune_vgg16_conv_layer(
-                model, layer_index, filter_index, use_batch_norm=True)
-            # update list
-            for i in range(len(filters_to_remove)):
-                filters_to_remove[i] -= 1
+        model = prune_vgg16.prune_vgg16_conv_layer(
+            model, layer_index, filters_to_remove, use_batch_norm=True)
 
     model = prune_vgg16.prune_last_fc_layer(
         model, group_indices, use_bce=args.bce)
@@ -91,28 +85,19 @@ def prune_resnet_main(model, candidates, group_indices):
         conv_no = conv_indices.index(layer_index)
         if conv_no % 2 == 0:
             filters_to_remove = first_relu_candidates[int(conv_no/2)]
-            sorted(filters_to_remove.sort())
+            # sorted(filters_to_remove.sort())
             model = prune_resnet.prune_selection_layer(
                 model, layer_index, filters_to_remove)
-
-            while len(filters_to_remove):
-                filter_index = filters_to_remove.pop(0)
-                model = prune_resnet.prune_first_conv_layer(
-                    model, layer_index, filter_index)
-                update_list(filters_to_remove)
+            prune_resnet.prune_first_conv_layer_(model, layer_index, filters_to_remove)
 
         filters_to_remove = list(filter_list)
-        sorted(filters_to_remove)
-
-        while len(filters_to_remove):
-            filter_index = filters_to_remove.pop(0)
-            model = prune_resnet.prune_resnet_conv_layer(
-                model, layer_index, filter_index, use_batch_norm=True)
-            update_list(filters_to_remove)
+        # sorted(filters_to_remove)
+        prune_resnet.prune_resnet_conv_layer_(
+            model, layer_index, filters_to_remove, use_batch_norm=True)
 
     if model.fc is None:
         raise ValueError("No linear layer found in classifier")
-    layer_prune.prune_linear_layer(model.fc, group_indices)
+    layer_prune.prune_output_linear_layer_(model.fc, group_indices)
     return model
 
 
