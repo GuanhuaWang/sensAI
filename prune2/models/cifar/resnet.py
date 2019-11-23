@@ -163,14 +163,14 @@ def resnet110(**kwargs):
     """
     Constructs a ResNet-110 model.
     """
-    return ResNet(depth=110, block_name='basicblock', **kwargs)
+    return ResNet(depth=110, block_name='bottleneck', **kwargs)
 
 
 def resnet164(**kwargs):
     """
     Constructs a ResNet-164 model.
     """
-    return ResNet(depth=164, block_name='basicblock', **kwargs)
+    return ResNet(depth=164, block_name='bottleneck', **kwargs)
 
 
 __all__ = ['resnet110', 'resnet164']
