@@ -45,12 +45,12 @@ def prune_vgg(model, pruned_candidates, group_indices):
     assert len(conv_indices) * 2 == len(conv_bn_indices)
 
     for i in range(len(conv_indices) - 1):
-        conv_bn_index = i * 2
+        conv_bn_index = i * 3
         prune_contiguous_conv2d_(
             features[conv_bn_index],
-            features[conv_bn_index + 2],
-            pruned_candidates[conv_bn_index + 1],
-            bn=model.features
+            features[conv_bn_index + 3],
+            pruned_candidates[i],
+            bn=model.features[conv_bn_index + 1]
         )
 
     # Prunning the last conv layer. This affects the first linear layer of the classifier.
