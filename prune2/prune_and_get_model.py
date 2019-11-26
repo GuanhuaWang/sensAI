@@ -40,11 +40,15 @@ args = parser.parse_args()
 def prune_vgg(model, pruned_candidates, group_indices):
     features = model.features
     conv_indices = [i for i, layer in enumerate(features) if isinstance(layer, nn.Conv2d)]
+
+    classifier = model.classifier
+    last_conv = features[conv_indices[-1]]
+
     conv_bn_indices = [i for i, layer in enumerate(features) if isinstance(layer, (nn.Conv2d, nn.BatchNorm2d))]
     assert len(conv_indices) == len(pruned_candidates)
     assert len(conv_indices) * 2 == len(conv_bn_indices)
 
-    for i, conv_index in enumerate(conv_indices):
+    for i, conv_index in enumerate(conv_indices[:-1]):
         next_conv = None
         for j in range(conv_index + 1, len(features)):
             l = features[j]
@@ -63,13 +67,13 @@ def prune_vgg(model, pruned_candidates, group_indices):
 
     # Prunning the last conv layer. This affects the first linear layer of the classifier.
     last_conv = features[conv_indices[-1]]
-    pruned_indices = pruned_candidates[-1]
-    prune_conv2d_out_channels_(last_conv, pruned_indices)
-    prune_batchnorm2d_(features[conv_bn_indices[-1]], pruned_indices)
-
     classifier = model.classifier
     assert classifier.in_features % last_conv.out_channels == 0
     params_per_input_channel = classifier.in_features // last_conv.out_channels
+
+    pruned_indices = pruned_candidates[-1]
+    prune_conv2d_out_channels_(last_conv, pruned_indices)
+    prune_batchnorm2d_(features[conv_bn_indices[-1]], pruned_indices)
 
     linear_pruned_indices = []
     for i in pruned_indices:
@@ -81,27 +85,28 @@ def prune_vgg(model, pruned_candidates, group_indices):
 
 
 def prune_resnet(model, candidates, group_indices):
-    layers = model.children()
+    layers = list(model.children())
     # layer[0] : Conv2d
     # layer[1] : BatchNorm2e
     # layer[2] : ReLU
-    layer_index = 3
+    layer_index = 1
     for stage in (layers[3], layers[4], layers[5]):
         for block in stage.children():
             assert isinstance(block, Bottleneck), "only support bottleneck block"
-            children_dict = block.named_children()
+            children_dict = dict(block.named_children())
             conv1 = children_dict['conv1']
             conv2 = children_dict['conv2']
             conv3 = children_dict['conv3']
 
             prune_contiguous_conv2d_(
-                conv1, conv2, group_indices[layer_index], bn=children_dict['bn1'])
+                conv1, conv2, candidates[layer_index], bn=children_dict['bn1'])
             layer_index += 1
             prune_contiguous_conv2d_(
-                conv2, conv3, group_indices[layer_index], bn=children_dict['bn2'])
+                conv2, conv3, candidates[layer_index], bn=children_dict['bn2'])
             layer_index += 2
-            if 'downsample' in children_dict:
-                layer_index += 1
+            # because we are using the output of the ReLU, the output of
+            # the downsample is merged before ReLU, so we do not need to
+            # increase the layer index
     prune_output_linear_layer_(model.fc, group_indices, use_bce=args.bce)
 
 

@@ -6,3 +6,8 @@ python3 get_prune_candidates.py -a vgg19_bn -d cifar100 --resume $MODEL --groupe
 python3 get_prune_candidates.py -a vgg19_bn -d cifar100 --resume $MODEL --grouped  33 47 49 52 56 59 66 67 76 96
 python3 get_prune_candidates.py -a vgg19_bn -d cifar100 --resume $MODEL --grouped  5 11 31 37 38 39 64 75 84 97
 python3 get_prune_candidates.py -a vgg19_bn -d cifar100 --resume $MODEL --grouped  16 21 28 41 48 81 86 87 94 99
+python3 get_prune_candidates.py -a vgg19_bn -d cifar100 --resume $MODEL --grouped  12 15 17 25 60 68 71 85 89 90
+python3 get_prune_candidates.py -a vgg19_bn -d cifar100 --resume $MODEL --grouped  3 6 19 34 35 36 43 65 80 88
+python3 get_prune_candidates.py -a vgg19_bn -d cifar100 --resume $MODEL --grouped  0 9 14 54 57 63 82 83 92 98
+python3 get_prune_candidates.py -a vgg19_bn -d cifar100 --resume $MODEL --grouped  8 10 22 26 40 50 53 61 70 79
+python3 get_prune_candidates.py -a vgg19_bn -d cifar100 --resume $MODEL --grouped  4 7 18 27 42 44 45 55 74 78
