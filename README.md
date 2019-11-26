@@ -33,7 +33,7 @@ Supported datasets: DATASET = {cifar10, cifar100}
 
 6. Generate pruned model, 
    
-   First, delete `pruned_models/` dirs if existed.
+   First, delete `pruned_models/` dir if existed.
 
    Then, run
 
