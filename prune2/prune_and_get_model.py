@@ -47,7 +47,7 @@ def prune_vgg(model, pruned_candidates, group_indices):
     for i, conv_index in enumerate(conv_indices):
         next_conv = None
         for j in range(conv_index + 1, len(features)):
-            l = conv_indices[j]
+            l = features[j]
             if isinstance(l, nn.Conv2d):
                 next_conv = l
                 break
