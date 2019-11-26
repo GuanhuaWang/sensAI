@@ -22,7 +22,7 @@ def load_pretrain_model(arch, dataset, resume_checkpoint, num_classes, use_cuda)
     else:
         checkpoint = torch.load(
             resume_checkpoint, map_location=torch.device('cpu'))
-    if dataset == 'cifar':
+    if dataset.startswith('cifar'):
         model = cifar_models.__dict__[arch](num_classes=num_classes)  
     else:
         raise NotImplementedError(f"Unsupported dataset: {dataset}.")
