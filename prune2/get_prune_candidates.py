@@ -45,8 +45,10 @@ assert args.grouped
 def main():
     if args.dataset == 'cifar10':
         dataset = cifar.CIFAR10TrainingSetWrapper(args.grouped, False)
+        num_classes = 10
     elif args.dataset == 'cifar100':
         dataset = cifar.CIFAR100TrainingSetWrapper(args.grouped, False)
+        num_classes = 100
     else:
         raise NotImplementedError(
             f"There's no support for '{args.dataset}' dataset.")
@@ -58,7 +60,7 @@ def main():
         pin_memory=False)
 
     model = load_model.load_pretrain_model(
-        args.arch, 'cifar', args.resume, dataset.num_classes, use_cuda)
+        args.arch, 'cifar', args.resume, num_classes, use_cuda)
 
     print('\nMake a test run to generate activations. \n Using training set.\n')
     with ActivationRecord(model) as recorder:
