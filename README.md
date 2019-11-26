@@ -1,31 +1,50 @@
+# sensAI experiment
 
-0) Generate groups by running:
+## Pre-requirement
+
+Linux, python 3.6+
+
+## Setup
+
+```bash
+pip install -r requirements.txt
+```
+
+## Experiment Instructions
+
+Supported neural network architectures: ARCH = {vgg19_bn, resnet110, resnet164}
+
+Supported datasets: DATASET = {cifar10, cifar100}
+
+
+1. Generate groups by running:
 
    ```bash
-   python3 group_selection.py --arch=vgg19_bn --resume=vgg19bn-cifar100.pth.tar --dataset=cifar100 --ngroups=10
+   python3 group_selection.py --arch=$ARCH --resume=vgg19bn-cifar100.pth.tar --dataset=$DATASET --ngroups=10
    ```
 
-1) Specify pruning parameters in apoz_policy.py, activations.py <br>
-   [Can make program arguments that take parameters if heavy parameter tuning is needed] <br>
+2. Specify pruning parameters in `apoz_policy.py`
 
-2) Specify group indices in ./scripts/activations_grouped_vgg19.sh <br>
+3. Specify group indices in `./scripts/activations_grouped_vgg19.sh`
 
-3) To generate pruning candidates run `./scripts/activations_grouped_vgg19.sh`  <br>
+4. To generate pruning candidates run `./scripts/activations_grouped_vgg19.sh`
 
-4) Pruning candidate now stored in ./prune_candidate_logs <br>
+5. Pruning candidate now stored in `./prune_candidate_logs`
 
-5) Generate pruned model, run   <br>
-   python3 prune_and_get_model.py -a vgg19_bn -d cifar100 --resume ./checkpoint_bearclaw.pth.tar  -c ./prune_candidate_logs/ -s ./TO_SAVE_MODEL_BASE_DIR <br>
-   Models now saved at location, `./TO_SAVE_MODEL_BASE_DIR` <br>
+6. Generate pruned model, run
 
-6) Specify from dir (pruned models) and save dir (pruned and retrained models), and training parameters in <br>
-   `./scripts/train_pruned_grouped.sh` <br>
+   ```bash
+   python3 prune_and_get_model.py -a $ARCH --dataset $DATASET --resume ./checkpoint_bearclaw.pth.tar  -c ./prune_candidate_logs/ -s ./TO_SAVE_MODEL_BASE_DIR
+   ```
 
-After above script runs, retrained model located at specified save dir <br>
+   Models now saved at location, `./TO_SAVE_MODEL_BASE_DIR`
 
-7) To evaluate, <br>
+7. Specify from dir (pruned models) and save dir (pruned and retrained models), and training parameters in `./scripts/train_pruned_grouped.sh`
 
-  ```bash
-  python3 evaluate.py ./PATH_TO_RETRAIN_SAVED_DIR/ --test-batch 128
-  ```
+   After above script runs, retrained model located at specified save dir.
 
+8. To evaluate,
+
+   ```bash
+   python3 evaluate.py --dataset=$DATASET ./PATH_TO_RETRAIN_SAVED_DIR/ --test-batch 128
+   ```
