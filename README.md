@@ -31,7 +31,11 @@ Supported datasets: DATASET = {cifar10, cifar100}
 
 5. Pruning candidate now stored in `./prune_candidate_logs`
 
-6. Generate pruned model, run
+6. Generate pruned model, 
+   
+   First, delete `pruned_models/` and `pruned_models_retrained/` dirs if existed.
+
+   Then, run
 
    ```bash
    python3 prune_and_get_model.py -a $ARCH --dataset $DATASET --resume ./checkpoint_bearclaw.pth.tar  -c ./prune_candidate_logs/ -s ./TO_SAVE_MODEL_BASE_DIR
