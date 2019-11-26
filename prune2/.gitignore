@@ -1,5 +1,0 @@
-data/
-checkpoint_bearclaw.pth.tar
-prune_candidate_logs/
-.DS_Store
-vgg19bn-cifar100.pth.tar

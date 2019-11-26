@@ -1,2 +1,0 @@
-python3 cifar_binary.py -a vgg19_bn --epochs 40 --schedule 21 32 --gamma 0.1 --resume ~/zihao/rona_experiments/limo/vgg-pruning/pruned_models_80per/vgg19_bn/vgg19_bn_0_pruned_model.pth --checkpoint checkpoints/cifar10/vgg19_bn_0 --train-batch 64 --class-index 0
-python3 cifar_binary.py -a vgg19_bn --epochs 40 --schedule 21 32 --gamma 0.1 --resume ~/zihao/rona_experiments/limo/vgg-pruning/pruned_models_80per/vgg19_bn/vgg19_bn_1_pruned_model.pth --checkpoint checkpoints/cifar10/vgg19_bn_1 --train-batch 64 --class-index 1
