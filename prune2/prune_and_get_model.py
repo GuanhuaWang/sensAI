@@ -44,14 +44,22 @@ def prune_vgg(model, pruned_candidates, group_indices):
     assert len(conv_indices) == len(pruned_candidates)
     assert len(conv_indices) * 2 == len(conv_bn_indices)
 
-    for i in range(len(conv_indices) - 1):
-        conv_bn_index = i * 3
+    for i, conv_index in enumerate(conv_indices):
+        next_conv = None
+        for j in range(conv_index + 1, len(features)):
+            l = conv_indices[j]
+            if isinstance(l, nn.Conv2d):
+                next_conv = l
+                break
+        if next_conv is None:
+            break
+        bn = model.features[conv_index + 1]
+        assert isinstance(bn, nn.BatchNorm2d)
         prune_contiguous_conv2d_(
-            features[conv_bn_index],
-            features[conv_bn_index + 3],
+            features[conv_index],
+            next_conv,
             pruned_candidates[i],
-            bn=model.features[conv_bn_index + 1]
-        )
+            bn=bn)
 
     # Prunning the last conv layer. This affects the first linear layer of the classifier.
     last_conv = features[conv_indices[-1]]
@@ -66,7 +74,7 @@ def prune_vgg(model, pruned_candidates, group_indices):
     linear_pruned_indices = []
     for i in pruned_indices:
         linear_pruned_indices += list(range(i * params_per_input_channel, (i + 1) * params_per_input_channel))
-    
+
     prune_linear_in_features_(classifier, linear_pruned_indices)
     # prune the output of the classifier
     prune_output_linear_layer_(classifier, group_indices, use_bce=args.bce)
