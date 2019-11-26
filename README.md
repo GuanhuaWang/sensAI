@@ -1,4 +1,4 @@
-# SensAI experiment
+# sensAI experiment
 
 ## Pre-requirement
 
