@@ -4,10 +4,9 @@ Copyright (c) Wei YANG, 2017
 '''
 from __future__ import print_function
 
-import argparse
-import os
-import shutil
+import copy
 import time
+import os
 
 from tqdm import tqdm
 
@@ -19,47 +18,15 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import numpy as np
-from utils import Logger, AverageMeter, accuracy, savefig
-from torch.utils.data import Dataset, DataLoader
-
-import glob
-import re
+from utils import AverageMeter, accuracy
 
 import itertools
 
 from compute_flops import print_model_param_flops
 
-parser = argparse.ArgumentParser(description='PyTorch CIFAR10/100 Testing')
-# Checkpoints
-parser.add_argument('model_dir', type=str, metavar='PATH',
-                    help='path to the directory of pruned models (default: none)')
-# Datasets
-parser.add_argument('-d', '--dataset', required=True, type=str)
-parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
-                    help='number of data loading workers (default: 4)')
-parser.add_argument('--test-batch', default=128, type=int, metavar='N',
-                    help='test batchsize')
-
-# Miscs
-parser.add_argument('--seed', type=int, default=42, help='manual seed')
-args = parser.parse_args()
-
-# Validate dataset
-assert args.dataset == 'cifar10' or args.dataset == 'cifar100', 'Dataset can only be cifar10 or cifar100.'
-
-# Use CUDA
-use_cuda = torch.cuda.is_available()
-
-# Random seed
-torch.manual_seed(args.seed)
-if use_cuda:
-    torch.cuda.manual_seed_all(args.seed)
-
-torch.set_printoptions(threshold=10000)
-
 
 class GroupedModel(nn.Module):
-    def __init__(self, model_list, group_info):
+    def __init__(self, model_list, group_info, use_cuda):
         super().__init__()
         self.group_info = group_info
         # flatten list of list
@@ -84,42 +51,23 @@ class GroupedModel(nn.Module):
         print("\n===== Metrics for grouped model ==========================\n")
 
         for group_id, model in zip(self.group_info, self.model_list):
-            n_params = sum(p.numel() for p in model.parameters()) / 10**6
+            n_params = sum(p.numel() for p in model.parameters()) / 10 ** 6
             num_params.append(n_params)
             print(f'Grouped model for Class {group_id} '
                   f'Total params: {n_params:2f}M')
             num_flops.append(print_model_param_flops(model, 32))
 
-        print(f"Average number of flops: {sum(num_flops) / len(num_flops) / 10**9 :3f} G")
+        print(f"Average number of flops: {sum(num_flops) / len(num_flops) / 10 ** 9 :3f} G")
         print(f"Average number of param: {sum(num_params) / len(num_params)} M")
 
 
-def load_pruned_models(model_dir):
-    if not model_dir.endswith('/'):
-        model_dir += '/'
-    file_names = [f for f in glob.glob(model_dir + "*.pth", recursive=False)]
-    group_id_list = [re.search('\(([^)]+)', f_name).group(1)
-                     for f_name in file_names]
-
-    print(f"Grouping settings found: {group_id_list}")
-
-    assert bool(file_names) and bool(
-        group_id_list), "No files found. Maybe wrong directory?"
-
-    model_list = [torch.load(file_name) for file_name in file_names]
-    group_info = [[int(ind) for ind in g.split('_')] for g in group_id_list]
-    model = GroupedModel(model_list, group_info)
-    model.print_statistics()
-    return model
-
-
-def main():
-    # Data
-    print('==> Preparing dataset %s' % args.dataset)
-    if args.dataset == 'cifar10':
+def evaluate_models(dataset_name, models_dir, grouping_result, use_cuda, n_workers=1, batch_size=256):
+    if dataset_name == 'cifar10':
         dataset_loader = datasets.CIFAR10
-    elif args.dataset == 'cifar100':
+        num_classes = 10
+    elif dataset_name == 'cifar100':
         dataset_loader = datasets.CIFAR100
+        num_classes = 100
     else:
         raise NotImplementedError
 
@@ -133,18 +81,25 @@ def main():
                 transforms.Normalize(
                     (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
             ])),
-        batch_size = args.test_batch,
-        shuffle = True,
-        num_workers = args.workers)
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=n_workers)
 
     cudnn.benchmark = True
     criterion = nn.CrossEntropyLoss()  # if not args.bce else nn.BCEWithLogitsLoss()
-    model = load_pruned_models(args.model_dir)
 
-    test_acc = test_list(testloader, model, criterion, use_cuda)
+    # load pruned models
+    n_models = len(grouping_result)
+    model_list = [torch.load(os.path.join(models_dir, f'group_{index}.pth')) for index in range(n_models)]
+    group_info = copy.deepcopy(grouping_result)
+    model = GroupedModel(model_list, group_info, use_cuda)
+    model.print_statistics()
+
+    # start test
+    test_list(testloader, model, criterion, num_classes, use_cuda)
 
 
-def test_list(testloader, model, criterion, use_cuda):
+def test_list(testloader, model, criterion, num_classes, use_cuda):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -156,12 +111,7 @@ def test_list(testloader, model, criterion, use_cuda):
     model.eval()
     end = time.time()
 
-    if args.dataset == 'cifar10':
-        confusion_matrix = np.zeros((10, 10))
-    elif args.dataset == 'cifar100':
-        confusion_matrix = np.zeros((100, 100))
-    else:
-        raise NotImplementedError
+    confusion_matrix = np.zeros((num_classes, num_classes))
 
     bar = tqdm(total=len(testloader))
     # pdb.set_trace()
@@ -179,7 +129,7 @@ def test_list(testloader, model, criterion, use_cuda):
                 dt = np.argmax(output.cpu().numpy())
                 confusion_matrix[gt, dt] += 1
             # measure accuracy and record loss
-            prec1, prec5 = accuracy(outputs, targets, topk = (1, 5))
+            prec1, prec5 = accuracy(outputs, targets, topk=(1, 5))
             losses.update(loss.item(), inputs.size(0))
             top1.update(prec1.item(), inputs.size(0))
             top5.update(prec5.item(), inputs.size(0))
@@ -189,17 +139,18 @@ def test_list(testloader, model, criterion, use_cuda):
         end = time.time()
 
         # plot progress
-        bar.set_description('({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f} | top5: {top5: .4f}'.format(
-            batch=batch_idx + 1,
-            size=len(testloader),
-            data=data_time.avg,
-            bt=batch_time.avg,
-            total='N/A' or bar.elapsed_td,
-            eta='N/A' or bar.eta_td,
-            loss=losses.avg,
-            top1=top1.avg,
-            top5=top5.avg,
-        ))
+        bar.set_description(
+            '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f} | top5: {top5: .4f}'.format(
+                batch=batch_idx + 1,
+                size=len(testloader),
+                data=data_time.avg,
+                bt=batch_time.avg,
+                total='N/A' or bar.elapsed_td,
+                eta='N/A' or bar.eta_td,
+                loss=losses.avg,
+                top1=top1.avg,
+                top5=top5.avg,
+            ))
     bar.close()
 
     np.set_printoptions(precision=3, linewidth=96)
@@ -232,10 +183,4 @@ def test_list(testloader, model, criterion, use_cuda):
         inter_group_matrix = confusion_matrix[group, :][:, group]
         inter_group_matrix /= inter_group_matrix.sum(axis=-1)[:, np.newaxis]
         print(inter_group_matrix)
-    return (losses.avg, top1.avg)
-
-
-if __name__ == '__main__':
-    main()
-
-
+    # return losses.avg, top1.avg

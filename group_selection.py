@@ -1,5 +1,3 @@
-import argparse
-
 import torch
 import load_model
 from tqdm import tqdm
@@ -30,7 +28,8 @@ def kmeans_grouping(features, targets, n_groups, same_group_size=True, seed=42):
     return groups
 
 
-def group_classes(n_groups, dataset_name, arch, pretrained_model, seed, use_cuda, group_selection_algorithm='even_k_means',
+def group_classes(n_groups, dataset_name, arch, pretrained_model, seed, use_cuda,
+                  group_selection_algorithm='even_k_means',
                   n_workers=1, batch_size=256):
     print('==> Preparing dataset %s' % dataset_name)
     if dataset_name == 'cifar10':
@@ -83,45 +82,3 @@ def group_classes(n_groups, dataset_name, arch, pretrained_model, seed, use_cuda
     else:
         raise ValueError(f"Unknown algorithm '{group_selection_algorithm}'")
     return groups
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='PyTorch CIFAR10/100 Generate Group Info')
-    # Datasets
-    parser.add_argument('-d', '--dataset', required=True, type=str)
-    parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
-                        help='number of data loading workers (default: 4)')
-    parser.add_argument('--resume', required=True, default='', type=str, metavar='PATH',
-                        help='path to latest checkpoint (default: none)')
-    # Architecture
-    parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet20',
-                        choices=load_model.model_arches('cifar'),
-                        help='model architecture: ' +
-                             ' | '.join(load_model.model_arches('cifar')) +
-                             ' (default: resnet18)')
-    parser.add_argument('-n', '--ngroups', required=True, type=int, metavar='N',
-                        help='number of groups')
-
-    # Miscs
-    parser.add_argument('--seed', type=int, default=42, help='manual seed')
-
-    args = parser.parse_args()
-    use_cuda = torch.cuda.is_available() and True
-
-    # Random seed
-    torch.manual_seed(args.seed)
-    if use_cuda:
-        torch.cuda.manual_seed_all(args.seed)
-
-    groups = group_classes(args.ngroups,
-                           arch=args.arch,
-                           dataset=args.dataset,
-                           pretrained_model=args.resume,
-                           use_cuda=use_cuda,
-                           seed=args.seed,
-                           n_workers=args.workers)
-
-    print("\n====================== Grouping Result ========================\n")
-    for i, group in enumerate(groups):
-        print(f"Group #{i}: {' '.join(str(idx) for idx in group)}")

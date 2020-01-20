@@ -128,3 +128,4 @@ pruned_models_retrained/
 prune_candidate_logs/
 data/
 outputs/
+cifar100-vis.ipynb
