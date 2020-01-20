@@ -1,11 +1,4 @@
-import re
-import glob
-import models.cifar as models
 import os
-import sys
-import argparse
-import pathlib
-import pickle
 
 import torch
 from torch import nn
@@ -22,22 +15,7 @@ from models.cifar.resnet import Bottleneck
 import copy
 
 
-parser = argparse.ArgumentParser(description='VGG with mask layer on cifar10')
-parser.add_argument('-d', '--dataset', required=True, type=str)
-parser.add_argument('-c', '--prune-candidates', default="./prune_candidate_logs",
-                    type=str, help='Directory which stores the prune candidates for each model')
-parser.add_argument('-a', '--arch', default='vgg19_bn',
-                    type=str, help='The architecture of the trained model')
-parser.add_argument('-r', '--resume', default='', type=str,
-                    help='The path to the checkpoints')
-parser.add_argument('-s', '--save', default='./pruned_models',
-                    type=str, help='The path to store the pruned models')
-parser.add_argument('-bce', '--bce', default=False, type=bool,
-                    help='Prune according to binary cross entropy loss, i.e. no additional negative output for classifer')
-args = parser.parse_args()
-
-
-def prune_vgg(model, pruned_candidates, group_indices):
+def prune_vgg(model, pruned_candidates, group_indices, use_bce=False):
     features = model.features
     conv_indices = [i for i, layer in enumerate(features) if isinstance(layer, nn.Conv2d)]
 
@@ -81,10 +59,10 @@ def prune_vgg(model, pruned_candidates, group_indices):
 
     prune_linear_in_features_(classifier, linear_pruned_indices)
     # prune the output of the classifier
-    prune_output_linear_layer_(classifier, group_indices, use_bce=args.bce)
+    prune_output_linear_layer_(classifier, group_indices, use_bce=use_bce)
 
 
-def prune_resnet(model, candidates, group_indices):
+def prune_resnet(model, candidates, group_indices, use_bce=False):
     layers = list(model.children())
     # layer[0] : Conv2d
     # layer[1] : BatchNorm2e
@@ -107,55 +85,33 @@ def prune_resnet(model, candidates, group_indices):
             # because we are using the output of the ReLU, the output of
             # the downsample is merged before ReLU, so we do not need to
             # increase the layer index
-    prune_output_linear_layer_(model.fc, group_indices, use_bce=args.bce)
+    prune_output_linear_layer_(model.fc, group_indices, use_bce=use_bce)
 
 
-def main():
-    file_names = [f for f in glob.glob(
-        args.prune_candidates + "*.npy", recursive=False)]
-    group_id_list = [re.search('\(([^)]+)', f_name).group(1)
-                     for f_name in file_names]
-
-    use_cuda = torch.cuda.is_available()
-
-    print(f'==> Preparing dataset {args.dataset}')
-    if args.dataset == 'cifar10':
+def prune_model_from_pretrained(dataset_name, arch, pretrained_model, grouping_result, pruning_candidates,
+                                model_saving_dir, use_cuda):
+    if dataset_name == 'cifar10':
         num_classes = 10
-    elif args.dataset == 'cifar100':
+    elif dataset_name == 'cifar100':
         num_classes = 100
     else:
         raise NotImplementedError
 
-    # create pruned model save path
-    model_save_directory = os.path.join(args.save, args.arch)
-    pathlib.Path(model_save_directory).mkdir(parents=True, exist_ok=True)
-
-    # for each class
-    for group_id, file_name in zip(group_id_list, file_names):
-        # load pruning candidates
-        with open(file_name, 'rb') as f:
-            candidates = pickle.load(f)
-
+    for i, (group_indices, candidates) in enumerate(zip(grouping_result, pruning_candidates)):
         # load checkpoints
         model = load_model.load_pretrain_model(
-            args.arch, args.dataset, args.resume, num_classes, use_cuda)
+            arch, dataset_name, pretrained_model, num_classes, use_cuda)
         new_model = copy.deepcopy(model)
 
-        group_indices = [int(id) for id in group_id.split("_")]
         # pruning
-        if args.arch.startswith('vgg'):
+        if arch.startswith('vgg'):
             prune_vgg(new_model, candidates, group_indices)
-        elif args.arch.startswith('resnet'):
+        elif arch.startswith('resnet'):
             prune_resnet(new_model, candidates, group_indices)
         else:
             raise NotImplementedError
 
         # save the pruned model
-        pruned_model_name = f"{args.arch}_({group_id})_pruned_model.pth"
-        torch.save(new_model, os.path.join(
-            model_save_directory, pruned_model_name))
-        print('Pruned model saved at', model_save_directory)
-
-
-if __name__ == '__main__':
-    main()
+        pruned_model_name = f"group_{i}.pth"
+        torch.save(new_model, os.path.join(model_saving_dir, pruned_model_name))
+    print('Pruned model saved at', model_saving_dir)

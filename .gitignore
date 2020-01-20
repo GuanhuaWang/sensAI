@@ -121,8 +121,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+.idea/
 *.pth.tar
 pruned_models/
 pruned_models_retrained/
 prune_candidate_logs/
 data/
+outputs/
