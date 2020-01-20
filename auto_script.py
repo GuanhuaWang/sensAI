@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import subprocess
 import yaml
 
 import torch
@@ -84,10 +85,27 @@ else:
 # retrain
 retrained_models_dir = os.path.join(project_dir, 'retrained_models')
 if not args.skip_retrain:
+    process_list = []
     if not os.path.exists(retrained_models_dir) or args.force_override:
-        raise NotImplementedError
         print("=> start retraining models")
         os.makedirs(retrained_models_dir)
+        for i in range(len(grouping_result)):
+            my_env = os.environ.copy()
+            my_env["CUDA_VISIBLE_DEVICES"] = str(i)
+            output_file = open(os.path.join(retrained_models_dir, f'retrain_{i}.stdout.txt'), 'w')
+            proc = subprocess.Popen(['python3', 'cifar_group.py',
+                                     '-a', arch,
+                                     '--epochs', config['retrain_epoches'],
+                                     '--pruned --schedule 40 60 --gamma 0.1',
+                                     '--resume', os.path.join(pruned_models_dir, f'group_{i}.pth'),
+                                     '--checkpoint', os.path.join(retrained_models_dir, f'group_{i}.pth'),
+                                     '--train-batch', config['retrain_batch_size'],
+                                     '--dataset', dataset], stdout=output_file, env=my_env)
+            process_list.append((proc, output_file))
+            if len(process_list) >= 4:
+                process_list[0][0].wait()
+                process_list[0][1].close()
+                process_list.pop(0)
     else:
         print(f"=> retrained models exist ({retrained_models_dir}). retrained candidates generation skipped")
 else:

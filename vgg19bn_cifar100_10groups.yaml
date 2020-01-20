@@ -20,6 +20,10 @@ group_selection_algorithm: even_k_means
 arch: vgg19_bn
 # pretrained model path
 pretrained_model: vgg19bn-cifar100.pth.tar
+# the batch size for retraining
+retrain_batch_size: 256
+# the total epoches for retraining
+retrain_epoches: 2
 
 # ================ misc =======================
 # the seed used by the project for reproduction

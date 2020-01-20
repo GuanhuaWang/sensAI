@@ -25,3 +25,6 @@ Supported datasets: DATASET = {cifar10, cifar100}
    ```
  
    Look into `outputs` for result files. Use `./auto_script.py --help` for more options.
+
+
+NOTE: we haven't tested the retraining part
