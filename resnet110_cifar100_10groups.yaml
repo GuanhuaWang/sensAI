@@ -1,0 +1,30 @@
+# This is an example configure file for VGG-19bn on cifar-100
+
+# project name, will be used to save results under outputs
+project: resnet110_cifar100_10groups
+
+# ================ dataset ====================
+# dataset name; our dataloader should support such dataset
+dataset: cifar100
+# number of dataset loading workers
+n_dataset_loading_workers: 4
+
+# ================ grouping ===================
+# how many groups we will divide the classes into; this is also the number of pruned models
+n_groups: 10
+# the algorithm we are using for deciding the classes in each group
+group_selection_algorithm: even_k_means
+
+# ================ model ======================
+# model architecture; our model loader should support such model
+arch: resnet110
+# pretrained model path
+pretrained_model: resnet110-cifar100.pth.tar
+# the batch size for retraining
+retrain_batch_size: 256
+# the total epoches for retraining
+retrain_epoches: 2
+
+# ================ misc =======================
+# the seed used by the project for reproduction
+seed: 42
