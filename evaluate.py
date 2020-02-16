@@ -183,4 +183,3 @@ def test_list(testloader, model, criterion, num_classes, use_cuda):
         inter_group_matrix = confusion_matrix[group, :][:, group]
         inter_group_matrix /= inter_group_matrix.sum(axis=-1)[:, np.newaxis]
         print(inter_group_matrix)
-    # return losses.avg, top1.avg

@@ -99,20 +99,24 @@ if not args.skip_retrain:
         for i in range(len(grouping_result)):
             my_env = os.environ.copy()
             if use_cuda:
-                my_env["CUDA_VISIBLE_DEVICES"] = str(i % gpus_count)
-
+                my_env["CUDA_VISIBLE_DEVICES"]= str(i % gpus_count)
+                print(i%gpus_count)
             output_file = open(os.path.join(retrained_models_dir, f'retrain_{i}.stdout.txt'), 'w')
+            print([f.name for f in os.scandir(retrained_models_dir)])
             proc = subprocess.Popen(['python3', 'cifar_group.py',
-                                     '-a', arch,
-                                     '--epochs', config['retrain_epoches'],
-                                     '--pruned --schedule 40 60 --gamma 0.1',
+                                     '-a', str(arch),
+                                     '--epochs', str(config['retrain_epoches']),
+                                     *'--pruned --schedule 40 60 --gamma 0.1'.split(),
+                                     '--group-id', str(i),
+                                     '--grouping-result-file', grouping_result_file,
                                      '--resume', os.path.join(pruned_models_dir, f'group_{i}.pth'),
-                                     '--checkpoint', os.path.join(retrained_models_dir, f'group_{i}.pth'),
-                                     '--train-batch', config['retrain_batch_size'],
-                                     '--dataset', dataset], stdout=output_file, env=my_env)
+                                     '--checkpoint', os.path.join(retrained_models_dir,f'group_{i}.pth'),
+                                     '--train-batch',str(config['retrain_batch_size']),
+                                     '--dataset', dataset], stdout=output_file,env=my_env)
+            print([f.name for f in os.scandir(retrained_models_dir) if f.is_dir()])
             process_list.append((proc, output_file))
             if len(process_list) >= max_processes:
-                process_list[0][0].wait()
+                process_list[0][0].wait();
                 process_list[0][1].close()
                 process_list.pop(0)
     else:

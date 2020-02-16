@@ -19,11 +19,11 @@ group_selection_algorithm: even_k_means
 # model architecture; our model loader should support such model
 arch: resnet110
 # pretrained model path
-pretrained_model: resnet110-cifar100.pth.tar
+pretrained_model: resnet110-bottleneck-cifar100.pth.tar
 # the batch size for retraining
 retrain_batch_size: 256
 # the total epoches for retraining
-retrain_epoches: 2
+retrain_epoches: 0
 
 # ================ misc =======================
 # the seed used by the project for reproduction

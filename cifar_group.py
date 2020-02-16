@@ -2,13 +2,13 @@
 Copyright (c) Wei YANG, 2017
 """
 from __future__ import print_function
-
+import json
 import argparse
 import os
 import shutil
 import time
 import random
-
+print("cifar_group.py is running.....'")
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -55,6 +55,8 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--weight-decay', '--wd', default=5e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
 # Checkpoints
+parser.add_argument('--group-id', required=True, type=int, help="The index of the group used by the model.")
+parser.add_argument('--grouping-result-file', required=True, type=str, help="The path of the grouping result file.")
 parser.add_argument('-c', '--checkpoint', default='checkpoint', type=str, metavar='PATH',
                     help='path to save checkpoint (default: checkpoint)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
@@ -89,10 +91,8 @@ parser.add_argument('--pruned', default=False,
                     action='store_true', help='whether testing pruned models')
 parser.add_argument('--bce', default=False, action='store_true',
                     help='Use binary cross entropy loss')
-
 args = parser.parse_args()
 state = {k: v for k, v in args._get_kwargs()}
-
 # Validate dataset
 assert args.dataset == 'cifar10' or args.dataset == 'cifar100', 'Dataset can only be cifar10 or cifar100.'
 
@@ -109,20 +109,21 @@ if use_cuda:
     torch.cuda.manual_seed_all(args.manualSeed)
 
 best_acc = 0  # best test accuracy
-model_prefix = None
+model_prefix = 'retrain' # None
 
 
 def main():
+    print("cifar_group.py is running .......")
+    print(args.checkpoint)
     global best_acc
     # Data
     print('==> Preparing dataset %s' % args.dataset)
 
     assert args.pruned
-    group_id = re.search('\(([^)]+)', args.resume).group(1)
-    # checkpoint_name = args.arch + '_(' + group_id + ')_' + 'pruned_group_model'
-    model_prefix = args.checkpoint + args.arch + \
-        '_(' + group_id + ')_' + 'pruned_group_model'
-    class_indices = [int(c) for c in group_id.split("_")]
+
+    with open(args.grouping_result_file) as f:
+      grouping_result = json.load(f)
+    class_indices = grouping_result[args.group_id]
 
     if args.dataset == 'cifar10':
         trainset = cifar.CIFAR10TrainingSetWrapper(class_indices, True)
@@ -187,8 +188,8 @@ def main():
 
     start_epoch = args.start_epoch  # start from epoch 0 or last checkpoint epoch
 
-    if not os.path.isdir(args.checkpoint):
-        mkdir_p(args.checkpoint)
+    #if not os.path.isdir(args.checkpoint):  ##Kenan: Comment out these two lines, it is the reason we have folder everytime.
+      #  mkdir_p(args.checkpoint)
 
     if use_cuda:
         model.cuda()
@@ -211,7 +212,7 @@ def main():
         print('==> Resuming from checkpoint..')
         assert os.path.isfile(
             args.resume), 'Error: no checkpoint directory found!'
-        args.checkpoint = os.path.dirname(args.resume)
+       # args.checkpoint = os.path.dirname(args.resume)               ### Kenan: This line makes checkpoint dir as well, so we comment out.
         checkpoint = torch.load(args.resume)
         best_acc = checkpoint['best_acc']
         start_epoch = checkpoint['epoch']
@@ -224,6 +225,7 @@ def main():
                           'Valid Loss', 'Train Acc.', 'Valid Acc.'])
 
     if args.evaluate:
+        print("args.evaluate is True")
         print('\nEvaluation only')
         test_loss, test_acc = test(
             testloader, model, criterion, start_epoch, use_cuda)
@@ -231,35 +233,40 @@ def main():
         return
 
     # Train and val
-    for epoch in range(start_epoch, args.epochs):
-        adjust_learning_rate(optimizer, epoch)
+    #print("We are saving here...")
+    #print(str(args.epochs))
+    if args.epochs != 0:      ###Kenan: Add a if statement to solve the error when epochs is 0
+        for epoch in range(start_epoch, args.epochs):  
+            adjust_learning_rate(optimizer, epoch)
 
-        print('\nEpoch: [%d | %d] LR: %f' %
-              (epoch + 1, args.epochs, state['lr']))
+            print('\nEpoch: [%d | %d] LR: %f' %
+                  (epoch + 1, args.epochs, state['lr']))
 
-        train_loss, train_acc = train(
-            trainloader, model, criterion, optimizer, epoch, use_cuda)
-        test_loss, test_acc = test(
-            testloader, model, criterion, epoch, use_cuda)
+            train_loss, train_acc = train(
+                trainloader, model, criterion, optimizer, epoch, use_cuda)
+            test_loss, test_acc = test(
+                testloader, model, criterion, epoch, use_cuda)
 
-        print('\nEpoch: [%d | %d] LR: %f  Test Acc: %f     Train Acc %f' % (
-            epoch + 1, args.epochs, state['lr'], test_acc, train_acc))
+            print('\nEpoch: [%d | %d] LR: %f  Test Acc: %f     Train Acc %f' % (
+                epoch + 1, args.epochs, state['lr'], test_acc, train_acc))
 
-        # append logger file
-        logger.append([state['lr'], train_loss,
-                       test_loss, train_acc, test_acc])
+            # append logger file
+            logger.append([state['lr'], train_loss,
+                           test_loss, train_acc, test_acc])
 
-        # save model
-        is_best = test_acc > best_acc
-        best_acc = max(test_acc, best_acc)
-        if is_best:
-            torch.save(model, model_prefix + '.pth')
-
+            # save model
+            is_best = test_acc > best_acc
+            best_acc = max(test_acc, best_acc)
+            #print("is_best being checked")
+            if is_best:
+                torch.save(model, args.checkpoint)
+    else:
+        torch.save(model, args.checkpoint)
     logger.close()
     logger.plot()
     savefig(model_prefix + '_log.eps')
 
-    print('Best acc:')
+    print('Bcst acc:')
     print(best_acc)
 
 
@@ -418,4 +425,5 @@ def adjust_learning_rate(optimizer, epoch):
 
 
 if __name__ == '__main__':
+    print("cifar10_group.py is running .....")
     main()
