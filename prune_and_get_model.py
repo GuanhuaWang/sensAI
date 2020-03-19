@@ -19,9 +19,6 @@ def prune_vgg(model, pruned_candidates, group_indices, use_bce=False):
     features = model.features
     conv_indices = [i for i, layer in enumerate(features) if isinstance(layer, nn.Conv2d)]
 
-    classifier = model.classifier
-    last_conv = features[conv_indices[-1]]
-
     conv_bn_indices = [i for i, layer in enumerate(features) if isinstance(layer, (nn.Conv2d, nn.BatchNorm2d))]
     assert len(conv_indices) == len(pruned_candidates)
     assert len(conv_indices) * 2 == len(conv_bn_indices)
