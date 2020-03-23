@@ -109,9 +109,10 @@ if not args.skip_retrain:
         os.makedirs(retrained_models_dir)
         for i in range(len(grouping_result)):
             my_env = os.environ.copy()
+            current_devices = my_env["CUDA_VISIBLE_DEVICES"].split(",")
             if use_cuda:
-                my_env["CUDA_VISIBLE_DEVICES"] = str(i % gpus_count)
-                print(i % gpus_count)
+                my_env["CUDA_VISIBLE_DEVICES"] = current_devices[i % gpus_count]
+                print(my_env["CUDA_VISIBLE_DEVICES"])
             output_file = open(os.path.join(retrained_models_dir, f'retrain_{i}.stdout.txt'), 'w')
             print([f.name for f in os.scandir(retrained_models_dir)])
             proc = subprocess.Popen(['python3', 'cifar_group.py',
@@ -130,6 +131,13 @@ if not args.skip_retrain:
                 process_list[0][0].wait();
                 process_list[0][1].close()
                 process_list.pop(0)
+
+        # wait until all leftover processes are done
+        while len(process_list) > 0:
+            process_list[0][0].wait()
+            process_list[0][1].close()
+            process_list.pop(0)
+
     else:
         print(f"=> retrained models exist ({retrained_models_dir}). retrained candidates generation skipped")
 else:
