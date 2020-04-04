@@ -34,8 +34,8 @@ def _get_candidates_of_classes(classes, dataset_name, arch, pretrained_model, us
             if use_cuda:
                 inputs = inputs.cuda()
             recorder.record_batch(inputs)
-        candidates_by_layer = recorder.generate_pruned_candidates()
-        return candidates_by_layer
+    candidates_by_layer = recorder.generate_pruned_candidates()
+    return candidates_by_layer
 
 
 def get_candidates_from_pretrained(
