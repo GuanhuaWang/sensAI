@@ -3,4 +3,4 @@ numpy
 torch==1.2.0
 torchvison==0.4.0
 tqdm==4.36.1
-scikit-learn==0.21
+scikit-learn==0.21.3
