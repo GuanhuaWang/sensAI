@@ -71,7 +71,7 @@ def main():
             if use_cuda:
                 inputs = inputs.cuda()
             recorder.record_batch(inputs)
-        candidates_by_layer = recorder.generate_pruned_candidates()
+    candidates_by_layer = recorder.generate_pruned_candidates()
 
     with open(f"prune_candidate_logs/class_({'_'.join(str(n) for n in args.grouped)})_apoz_layer_thresholds.npy", "wb") as f:
         pickle.dump(candidates_by_layer, f)
