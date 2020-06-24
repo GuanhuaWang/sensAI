@@ -1,6 +1,6 @@
 matplotlib
 numpy
-torch==1.2.0
-torchvison==0.4.0
-tqdm==4.36.1
+torch==1.5.0
+torchvison==0.6.0
+tqdm==4.46.1
 scikit-learn==0.21.3

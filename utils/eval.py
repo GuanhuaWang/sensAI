@@ -22,4 +22,4 @@ def accuracy_binary(output, target):
     pred = output >= 0.0
     pred = pred.flatten().long()
     acc = pred.eq(target).sum().float() / target.numel()
-    return acc.data[0]
+    return acc.data

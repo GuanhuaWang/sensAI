@@ -9,6 +9,7 @@ from apoz_policy import ActivationRecord
 from datasets import cifar
 import load_model
 from tqdm import tqdm
+import os
 
 
 parser = argparse.ArgumentParser(
@@ -29,10 +30,15 @@ parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet20',
 parser.add_argument('--seed', type=int, default=42, help='manual seed')
 parser.add_argument('--grouped', required=True, type=int, nargs='+', default=[],
                     help='Generate activations based on the these class indices')
+parser.add_argument('--group_number', required=True, type=int,
+                    help='Group number')
+parser.add_argument('--gpu_num', default='0', type=str,
+                    help='GPU number')
 
 
 args = parser.parse_args()
-use_cuda = torch.cuda.is_available() and True
+os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_num
+use_cuda = torch.cuda.is_available()
 
 # Random seed
 torch.manual_seed(args.seed)
@@ -61,7 +67,8 @@ def main():
 
     model = load_model.load_pretrain_model(
         args.arch, 'cifar', args.resume, num_classes, use_cuda)
-
+    if use_cuda:
+        model.cuda()
     print('\nMake a test run to generate activations. \n Using training set.\n')
     with ActivationRecord(model) as recorder:
         # collect pruning data
@@ -73,7 +80,7 @@ def main():
             recorder.record_batch(inputs)
     candidates_by_layer = recorder.generate_pruned_candidates()
 
-    with open(f"prune_candidate_logs/class_({'_'.join(str(n) for n in args.grouped)})_apoz_layer_thresholds.npy", "wb") as f:
+    with open(f"prune_candidate_logs/group_{args.group_number}_apoz_layer_thresholds.npy", "wb") as f:
         pickle.dump(candidates_by_layer, f)
     print(candidates_by_layer)
 
