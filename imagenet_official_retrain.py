@@ -146,7 +146,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.resume:
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
-            model = torch.load(args.resume)
+            model = torch.load(args.resume, map_location=torch.device("cuda"))
             # model = torch.nn.DataParallel(model) # TODO DataParallel
             print("checkpoint loading model in porgess..........")
             model = model.cuda()   ### Deleted: DataParelle(model)
