@@ -39,7 +39,7 @@ class DataSetWrapper(object):
         index = self.mapping[i]
         data, label = self.dataset[index]
         if label in self.class_group:
-            label = self.class_group.index(label) + 1
+            label = list(self.class_group).index(label) + 1
         else:
             label = 0
         return data, label

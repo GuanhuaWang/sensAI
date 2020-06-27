@@ -100,11 +100,3 @@ def show_mask(images, masklist, Mean=(2, 2, 2), Std=(0.5,0.5,0.5)):
         plt.subplot(1+len(masklist), 1, i+2)
         plt.imshow(mask)
         plt.axis('off')
-
-
-
-# x = torch.zeros(1, 3, 3)
-# out = colorize(x)
-# out_im = make_image(out)
-# plt.imshow(out_im)
-# plt.show()

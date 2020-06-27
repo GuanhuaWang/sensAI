@@ -6,11 +6,15 @@ import sys
 import argparse
 import pathlib
 import pickle
-
+import copy
+import numpy as np 
+import re 
 import torch
 from torch import nn
 import load_model
+import torch.multiprocessing as mp
 
+from prune_utils.prune import prune_vgg16_conv_layer, prune_last_fc_layers, prune_resnet50
 from prune_utils.layer_prune import (
     prune_output_linear_layer_,
     prune_contiguous_conv2d_,
@@ -18,13 +22,11 @@ from prune_utils.layer_prune import (
     prune_batchnorm2d_,
     prune_linear_in_features_)
 from models.cifar.resnet import Bottleneck
-
-import copy
-
+import torchvision.models as imagenet_models
 
 parser = argparse.ArgumentParser(description='VGG with mask layer on cifar10')
 parser.add_argument('-d', '--dataset', required=True, type=str)
-parser.add_argument('-c', '--prune-candidates', default="./prune_candidate_logs",
+parser.add_argument('-c', '--prune-candidates', default="./prune_candidate_logs/",
                     type=str, help='Directory which stores the prune candidates for each model')
 parser.add_argument('-a', '--arch', default='vgg19_bn',
                     type=str, help='The architecture of the trained model')
@@ -32,18 +34,16 @@ parser.add_argument('-r', '--resume', default='', type=str,
                     help='The path to the checkpoints')
 parser.add_argument('-s', '--save', default='./pruned_models',
                     type=str, help='The path to store the pruned models')
-parser.add_argument('-bce', '--bce', default=False, type=bool,
+parser.add_argument('--bce', default=False, type=bool,
                     help='Prune according to binary cross entropy loss, i.e. no additional negative output for classifer')
+parser.add_argument('--pretrained', dest='pretrained', action='store_true',
+                    help='use pre-trained model')
 args = parser.parse_args()
 
 
 def prune_vgg(model, pruned_candidates, group_indices):
     features = model.features
     conv_indices = [i for i, layer in enumerate(features) if isinstance(layer, nn.Conv2d)]
-
-    classifier = model.classifier
-    last_conv = features[conv_indices[-1]]
-
     conv_bn_indices = [i for i, layer in enumerate(features) if isinstance(layer, (nn.Conv2d, nn.BatchNorm2d))]
     assert len(conv_indices) == len(pruned_candidates)
     assert len(conv_indices) * 2 == len(conv_bn_indices)
@@ -109,53 +109,137 @@ def prune_resnet(model, candidates, group_indices):
             # increase the layer index
     prune_output_linear_layer_(model.fc, group_indices, use_bce=args.bce)
 
+def filename_to_index(filename):
+        filename = filename[6+len(args.prune_candidates):]
+        return int(filename[:filename.index('_')])
 
-def main():
-    file_names = [f for f in glob.glob(
-        args.prune_candidates + "*.npy", recursive=False)]
-    group_id_list = [re.search('\(([^)]+)', f_name).group(1)
-                     for f_name in file_names]
+def update_list(l):
+    for i in range(len(l)):
+        l[i] -= 1
 
-    use_cuda = torch.cuda.is_available()
-
-    print(f'==> Preparing dataset {args.dataset}')
-    if args.dataset == 'cifar10':
-        num_classes = 10
-    elif args.dataset == 'cifar100':
-        num_classes = 100
+def prune_cifar_worker(proc_ind, i, new_model, candidates, group_indices, arch, model_save_directory):
+    num_gpus = torch.cuda.device_count()
+    new_model.cuda(i % num_gpus)
+    group_indices = group_indices.tolist()
+    if args.arch.startswith('vgg'):
+        prune_vgg(new_model, candidates, group_indices)
+    elif args.arch.startswith('resnet'):
+        prune_resnet(new_model, candidates, group_indices)
     else:
         raise NotImplementedError
 
+    # save the pruned model
+    pruned_model_name = f"{arch}_{i}_pruned_model.pth"
+    torch.save(new_model, os.path.join(
+        model_save_directory, pruned_model_name))
+    print('Pruned model saved at', model_save_directory)
+
+def prune_imagenet_worker(proc_ind, model, candidates, group_indices, group_id, model_save_directory):
+    num_gpus = torch.cuda.device_count()
+    torch.cuda.set_device(group_id % num_gpus)
+    model.cuda(group_id % num_gpus)
+    if args.arch != "resnet50":
+        conv_indices = [idx for idx, (n, p) in enumerate(model.features._modules.items()) if isinstance(p, nn.modules.conv.Conv2d)]
+        offset = 0
+        for layer_index, filter_list in zip(conv_indices, candidates):
+            offset += 1
+            filters_to_remove = list(filter_list)
+            sorted(filters_to_remove)
+                    
+            while len(filters_to_remove):
+                filter_index = filters_to_remove.pop(0)
+                model = prune_vgg16_conv_layer(model, layer_index, filter_index, use_batch_norm=True)
+                update_list(filters_to_remove)
+            
+        # save the pruned model
+        # The input dimension of the first fc layer is pruned from above
+        model = prune_last_fc_layers(model, \
+                                    group_indices, \
+                                    filter_indices = candidates[offset:], \
+                                    use_bce = args.bce)
+    else:
+        prune_resnet50(model, candidates, group_indices)
+
+    pruned_model_name = args.arch + '_{}'.format(group_id) + '_pruned_model.pth'
+    print('Grouped mode  %s Total params: %.2fM' % (group_id ,sum(p.numel() for p in model.parameters())/1000000.0))
+    torch.save(model, os.path.join(model_save_directory, pruned_model_name))
+    print('Pruned model saved at', model_save_directory)
+
+def main():
+    use_cuda = torch.cuda.is_available()
+    # load groups
+    file_names = [f for f in glob.glob(args.prune_candidates + "group_*.npy", recursive=False)]
+    file_names.sort(key=filename_to_index)
+    groups = np.load(open(args.prune_candidates + "grouping_config.npy", "rb"))
+    
     # create pruned model save path
     model_save_directory = os.path.join(args.save, args.arch)
     pathlib.Path(model_save_directory).mkdir(parents=True, exist_ok=True)
+    np.save(open(os.path.join(args.save, "grouping_config.npy"), "wb"), groups)
+    if len(groups[0]) == 1:
+        args.bce = True
+    print(f'==> Preparing dataset {args.dataset}')
+    if args.dataset in ['cifar10', 'cifar100']:
+        if args.dataset == 'cifar10':
+            num_classes = 10
+        elif args.dataset == 'cifar100':
+            num_classes = 100
+        
+        processes = []
+        # for each class
+        for i, (group_indices, file_name) in enumerate(zip(groups, file_names)):
+            # load pruning candidates
+            with open(file_name, 'rb') as f:
+                candidates = pickle.load(f)
+            # load checkpoints
+            model = load_model.load_pretrain_model(
+                args.arch, args.dataset, args.resume, num_classes, use_cuda)
+            new_model = copy.deepcopy(model)
+            p = mp.spawn(prune_cifar_worker, args=(i, new_model, candidates, group_indices, args.arch, model_save_directory), join=False)
+            processes.append(p)
+        for p in processes:
+            p.join()
+            
 
-    # for each class
-    for group_id, file_name in zip(group_id_list, file_names):
-        # load pruning candidates
-        with open(file_name, 'rb') as f:
-            candidates = pickle.load(f)
+    elif args.dataset == 'imagenet':
+        num_classes = len(groups)
+        processes = []
+        # for each class
+        for group_id, file_name in enumerate(file_names):
+            print('Pruning classes {} from candidates in {}'.format(group_id, file_name)) 
+            group_indices = groups[group_id]
+            # load pruning candidates
+            print(file_name)
+            candidates =  np.load(open(file_name, 'rb'), allow_pickle=True).tolist()
+            
+            num_gpus = torch.cuda.device_count()
+            # load checkpoints
+            if args.pretrained:
+                print("=> using pre-trained model '{}'".format(args.arch))
+                model = imagenet_models.__dict__[args.arch](pretrained=True)
+                # model = torch.nn.DataParallel(model).cuda() #TODO use DataParallel
+                model = model.cuda(group_id % num_gpus)
+            else:
+                checkpoint = torch.load(args.resume)
+                model = imagenet_models.__dict__[args.arch](num_classes=num_classes)
+                # model = torch.nn.DataParallel(model).cuda() #TODO use DataParallel
+                model = model.cuda(group_id % num_gpus)
+                model.load_state_dict(checkpoint['state_dict'])
 
-        # load checkpoints
-        model = load_model.load_pretrain_model(
-            args.arch, args.dataset, args.resume, num_classes, use_cuda)
-        new_model = copy.deepcopy(model)
+            # join existing num_gpus processes, to make sure only num_gpus processes are running at a time
+            if group_id % num_gpus == 0:
+                for p in processes:
+                    p.join()
+                processes = []
 
-        group_indices = [int(id) for id in group_id.split("_")]
-        # pruning
-        if args.arch.startswith('vgg'):
-            prune_vgg(new_model, candidates, group_indices)
-        elif args.arch.startswith('resnet'):
-            prune_resnet(new_model, candidates, group_indices)
-        else:
-            raise NotImplementedError
+            # model = model.module #TODO use DataParallel
+            p = mp.spawn(prune_imagenet_worker, args=(model, candidates, group_indices, group_id, model_save_directory), join=False)
+            processes.append(p)
 
-        # save the pruned model
-        pruned_model_name = f"{args.arch}_({group_id})_pruned_model.pth"
-        torch.save(new_model, os.path.join(
-            model_save_directory, pruned_model_name))
-        print('Pruned model saved at', model_save_directory)
-
+        for p in processes:
+            p.join()
+    else:
+        raise NotImplementedError
 
 if __name__ == '__main__':
     main()
