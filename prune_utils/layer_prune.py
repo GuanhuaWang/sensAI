@@ -7,7 +7,7 @@ def prune_output_linear_layer_(linear_layer, class_indices, use_bce=False):
         assert len(class_indices) == 1
     else:
         # use 0 as the placeholder of the negative class
-        class_indices = [0] + class_indices
+        class_indices = [0] + list(class_indices)
     linear_layer.bias.data = linear_layer.bias.data[class_indices]
     linear_layer.weight.data = linear_layer.weight.data[class_indices, :]
     if not use_bce:
@@ -109,5 +109,10 @@ def prune_conv2d_in_channels_(conv, pruned_indices):
 def prune_contiguous_conv2d_(conv_p, conv_n, pruned_indices, bn=None):
     prune_conv2d_out_channels_(conv_p, pruned_indices)
     prune_conv2d_in_channels_(conv_n, pruned_indices)
+    if bn is not None:
+        prune_batchnorm2d_(bn, pruned_indices)
+
+def prune_contiguous_conv2d_last(conv_p, conv_n, pruned_indices, bn=None):
+    prune_conv2d_out_channels_(conv_p, pruned_indices)
     if bn is not None:
         prune_batchnorm2d_(bn, pruned_indices)

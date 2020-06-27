@@ -1,12 +1,5 @@
 from __future__ import absolute_import
 
-'''Resnet for cifar dataset.
-Ported form
-https://github.com/facebook/fb.resnet.torch
-and
-https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
-(c) YANG, Wei
-'''
 import torch.nn as nn
 import math
 

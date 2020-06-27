@@ -1,6 +1,3 @@
-"""Training script for CIFAR-10/100
-Copyright (c) Wei YANG, 2017
-"""
 from __future__ import print_function
 
 import argparse
@@ -8,6 +5,7 @@ import os
 import shutil
 import time
 import random
+import numpy as np
 
 import torch
 import torch.nn as nn
@@ -59,6 +57,9 @@ parser.add_argument('-c', '--checkpoint', default='checkpoint', type=str, metava
                     help='path to save checkpoint (default: checkpoint)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
+
+parser.add_argument('--grouping_dir', type=str, required=True,
+                    help='directory to which pruned models grouping is saved')
 # Architecture
 parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet20',
                     choices=model_names,
@@ -81,7 +82,7 @@ parser.add_argument('--manualSeed', type=int, help='manual seed')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 # Device options
-parser.add_argument('--gpu-id', default='0', type=str,
+parser.add_argument('--gpu_id', default='0', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
 parser.add_argument('--class-index', default=0, type=int,
                     help='class index for binary cls')
@@ -96,8 +97,8 @@ state = {k: v for k, v in args._get_kwargs()}
 # Validate dataset
 assert args.dataset == 'cifar10' or args.dataset == 'cifar100', 'Dataset can only be cifar10 or cifar100.'
 
-# Use CUDA
-# os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_id
+# Use CUDA, specific GPU
+os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_id
 use_cuda = torch.cuda.is_available()
 
 # Random seed
@@ -111,19 +112,26 @@ if use_cuda:
 best_acc = 0  # best test accuracy
 model_prefix = None
 
-
 def main():
     global best_acc
     # Data
     print('==> Preparing dataset %s' % args.dataset)
-
     assert args.pruned
-    group_id = re.search('\(([^)]+)', args.resume).group(1)
-    # checkpoint_name = args.arch + '_(' + group_id + ')_' + 'pruned_group_model'
-    model_prefix = args.checkpoint + args.arch + \
-        '_(' + group_id + ')_' + 'pruned_group_model'
-    class_indices = [int(c) for c in group_id.split("_")]
 
+    # Load groups of classes
+    group_id = filename_to_index(args.resume)
+    groups = np.load(open(args.grouping_dir + "grouping_config.npy", "rb"))
+    class_indices = groups[group_id]
+
+    # Extract model filename prefix
+    model_prefix = args.checkpoint + '/'+args.arch + \
+        '_' + str(group_id) + '_' + 'pruned_group_model'
+
+    # If only one class in a group, use Binary CrossEntropy
+    if len(class_indices) == 1:
+        args.bce = True
+
+    # Load dataset
     if args.dataset == 'cifar10':
         trainset = cifar.CIFAR10TrainingSetWrapper(class_indices, True)
         testset = cifar.CIFAR10TestingSetWrapper(class_indices, True)
@@ -145,8 +153,8 @@ def main():
             pin_memory=False)
     num_classes = len(class_indices) + 1
 
+    # Create model
     if not args.pruned:
-        # Model
         print("==> creating model '{}'".format(args.arch))
         if args.arch.startswith('resnext'):
             model = models.__dict__[args.arch](
@@ -177,26 +185,19 @@ def main():
                 depth=args.depth,
                 block_name=args.block_name,
             )
-        # else:
-            # model = models.__dict__[args.arch](num_classes=num_classes)
     else:
         print("==> Loading pruned model with some existing weights '{}'".format(args.arch))
-        model = torch.load(args.resume)
-        if use_cuda:
-            model.cuda()
+        model = torch.load(args.resume, map_location=torch.device("cuda"))
 
+    # Set training parameters
     start_epoch = args.start_epoch  # start from epoch 0 or last checkpoint epoch
-
     if not os.path.isdir(args.checkpoint):
         mkdir_p(args.checkpoint)
-
     if use_cuda:
         model.cuda()
-    # model = model.cpu()
     cudnn.benchmark = True
     print('    Total params: %.2fM' % (sum(p.numel()
                                            for p in model.parameters())/1000000.0))
-
     if args.bce:
         criterion = nn.BCEWithLogitsLoss()
     else:
@@ -204,7 +205,7 @@ def main():
     optimizer = optim.SGD(model.parameters(), lr=args.lr,
                           momentum=args.momentum, weight_decay=args.weight_decay)
 
-    # Resume
+    # Initialize training log
     title = 'cifar-10-' + args.arch
     if args.resume and not args.pruned:
         # Load checkpoint.
@@ -223,6 +224,7 @@ def main():
         logger.set_names(['Learning Rate', 'Train Loss',
                           'Valid Loss', 'Train Acc.', 'Valid Acc.'])
 
+    # Evaluation only
     if args.evaluate:
         print('\nEvaluation only')
         test_loss, test_acc = test(
@@ -230,7 +232,7 @@ def main():
         print(' Test Loss:  %.8f, Test Acc:  %.2f' % (test_loss, test_acc))
         return
 
-    # Train and val
+    # Train and validation
     for epoch in range(start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch)
 
@@ -256,8 +258,6 @@ def main():
             torch.save(model, model_prefix + '.pth')
 
     logger.close()
-    logger.plot()
-    savefig(model_prefix + '_log.eps')
 
     print('Best acc:')
     print(best_acc)
@@ -285,7 +285,6 @@ def train(trainloader, model, criterion, optimizer, epoch, use_cuda):
 
             # compute output
             outputs = model(inputs)
-
             if args.bce:
                 loss = 0.0
                 for i in range(outputs.shape[1]):
@@ -358,13 +357,10 @@ def test(testloader, model, criterion, epoch, use_cuda):
                 # compute output
                 outputs = model(inputs)
                 if args.bce:
-                    # print('outputs', outputs[0])
-                    # print('target', targets[0])
                     loss = 0.0
                     for i in range(outputs.shape[1]):
                         loss += criterion(outputs[:, i].flatten(),
                                         targets.eq(i+1).float())
-                #    loss = criterion(outputs.flatten(), targets.float())
                 else:
                     loss = criterion(outputs, targets)
 
@@ -415,6 +411,11 @@ def adjust_learning_rate(optimizer, epoch):
         state['lr'] *= args.gamma
         for param_group in optimizer.param_groups:
             param_group['lr'] = state['lr']
+
+# Takes a filename and find the group number in the filename.
+def filename_to_index(filename):
+        filename = filename[len(args.arch) * 2 + 2 +len(args.grouping_dir):]
+        return int(filename[:filename.index('_')])
 
 
 if __name__ == '__main__':

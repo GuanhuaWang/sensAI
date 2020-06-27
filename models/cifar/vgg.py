@@ -1,6 +1,3 @@
-''' CIFAR10. FC layers are removed.
-(c) YANG, Wei 
-'''
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 import math
