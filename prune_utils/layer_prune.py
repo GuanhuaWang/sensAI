@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-
+from fractions import gcd
 
 def prune_output_linear_layer_(linear_layer, class_indices, use_bce=False):
     if use_bce:
@@ -29,13 +29,14 @@ def prune_linear_in_features_(fc, pruned_indices):
 
 
 def prune_tensor(tensor, dim, pruned_indices):
+    if tensor.shape[dim] == 1:
+        return tensor
     included_indices = [i for i in range(
         tensor.shape[dim]) if i not in pruned_indices]
     indexer = []
     for i in range(tensor.ndim):
         indexer.append(slice(None) if i != dim else included_indices)
     return tensor[indexer]
-
 
 def prune_batchnorm2d(bn, pruned_indices):
     new_bn = nn.BatchNorm2d(bn.num_features - len(pruned_indices))
@@ -116,3 +117,73 @@ def prune_contiguous_conv2d_last(conv_p, conv_n, pruned_indices, bn=None):
     prune_conv2d_out_channels_(conv_p, pruned_indices)
     if bn is not None:
         prune_batchnorm2d_(bn, pruned_indices)
+
+def prune_mobile_conv2d_in_channels(conv, pruned_indices):
+    conv.in_channels -= len(pruned_indices)
+    conv.groups = conv.in_channels
+
+    conv.weight.data = prune_tensor(conv.weight.data, 1, pruned_indices)
+    return conv
+
+def prune_mobile_conv2d_out_channels(conv, pruned_indices):
+    if conv.groups != 1:
+      pruned_indices = pruned_indices[:(conv.out_channels - conv.in_channels)]
+    conv.out_channels -= len(pruned_indices)
+    conv.groups = conv.out_channels
+    conv.weight.data = prune_tensor(conv.weight.data, 0, pruned_indices)
+    return conv
+
+def prune_contiguous_conv2d_mobile_a(conv_p, conv_n, pruned_indices, bn=None):
+    prune_conv2d_out_channels_(conv_p, pruned_indices)
+    prune_mobile_conv2d_in_channels(conv_n, pruned_indices)
+    if bn is not None:
+        prune_batchnorm2d_(bn, pruned_indices)
+
+def prune_contiguous_conv2d_mobile_b(conv_p, conv_n, pruned_indices, bn=None):
+    prune_mobile_conv2d_out_channels(conv_p, pruned_indices)
+    prune_conv2d_in_channels_(conv_n, pruned_indices[:(conv_n.in_channels-conv_p.out_channels)])
+    if bn is not None:
+        prune_batchnorm2d_(bn, pruned_indices[:(bn.num_features-conv_p.out_channels)])
+
+def prune_mobile_block(conv_1, conv_2, conv_3, pruned_indices_1, pruned_indices_2, bn_1, bn_2):
+    small_len = min(len(pruned_indices_1), len(pruned_indices_2))
+    if len(pruned_indices_2) < len(pruned_indices_1):
+      pruned_indices_1 = pruned_indices_1[:small_len]
+    prune_contiguous_conv2d_mobile_a(conv_1, conv_2, pruned_indices_1, bn=bn_1)
+    prune_contiguous_conv2d_mobile_b(conv_2, conv_3, pruned_indices_2, bn=bn_2)
+
+def prune_downblock(block, layer_candidates):
+    conv3 = block.conv3
+    bn3 = block.bn3
+    conv4 = block.conv4
+    bn4 = block.bn4
+    conv5 = block.conv5
+    pruned_indices_3_4 = layer_candidates[2]
+    pruned_indices_4_5 = layer_candidates[3]
+    small_len = min(len(pruned_indices_3_4), len(pruned_indices_4_5))
+    if len(pruned_indices_4_5) < len(pruned_indices_3_4):
+      pruned_indices_3_4 = pruned_indices_4_5[:small_len]
+    prune_contiguous_conv2d_mobile_a(conv3, conv4, pruned_indices_3_4, bn=bn3)
+    prune_contiguous_conv2d_mobile_b(conv4, conv5, pruned_indices_4_5, bn=bn4)
+
+def prune_basicblock(block, layer_candidates):
+    conv_1 = block.conv1 
+    bn_1 = block.bn1 
+    conv_2 = block.conv2
+    bn_2 = block.bn2 
+    conv_3 = block.conv3
+    pruned_indices_1 = layer_candidates[0]
+    pruned_indices_2 = layer_candidates[1]
+    small_len = min(len(pruned_indices_1), len(pruned_indices_2))
+    if len(pruned_indices_2) < len(pruned_indices_1):
+      pruned_indices_1 = pruned_indices_1[:small_len]
+    prune_contiguous_conv2d_mobile_a(conv_1, conv_2, pruned_indices_1, bn=bn_1)
+    prune_contiguous_conv2d_mobile_b(conv_2, conv_3, pruned_indices_2, bn=bn_2)
+
+def prune_shuffle_layer(layer, layer_candidates):
+    for idx, block in enumerate(layer):
+        if idx == 0:
+            prune_downblock(block, layer_candidates[:5]) 
+        else:
+            candidates = layer_candidates[idx*3+2:idx*3+5]
+            prune_basicblock(block, candidates)

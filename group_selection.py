@@ -98,6 +98,7 @@ def main():
 
         groups = kmeans_grouping(all_features, all_targets,
                                 args.ngroups, same_group_size=True)
+        print("groups: ", groups)
         print("\n====================== Grouping Result ========================\n")
         process_list = [None for _ in range(args.gpu_num)]
         for i, group in enumerate(groups):

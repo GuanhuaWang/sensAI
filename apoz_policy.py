@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import contextlib
-
+import torch.nn.functional as F
 
 def apoz_scoring(activation):
     """
@@ -31,7 +31,7 @@ def avg_scoring(activation):
 
 
 class ActivationRecord:
-    def __init__(self, model):
+    def __init__(self, model, arch):
         self.apoz_scores_by_layer = []
         self.avg_scores_by_layer = []
         self.num_batches = 0
@@ -41,6 +41,7 @@ class ActivationRecord:
         # switch to evaluate mode
         self._model.eval()
         self._model.apply(lambda m: m.register_forward_hook(self._hook))
+        self.arch = arch
 
     def parse_activation(self, feature_map):
         apoz_score = apoz_scoring(feature_map).numpy()
@@ -73,8 +74,12 @@ class ActivationRecord:
 
     def _hook(self, module, input, output):
         """Apply a hook to RelU layer"""
-        if module.__class__.__name__ == 'ReLU':
-            self.parse_activation(output)
+        if self.arch == "shufflenetv2":
+            if module.__class__.__name__ == 'BatchNorm2d':
+                self.parse_activation(F.relu(output))
+        else:
+            if module.__class__.__name__ == 'ReLU':
+                self.parse_activation(output)
 
     def generate_pruned_candidates(self):
         num_layers = len(self.apoz_scores_by_layer)
@@ -83,15 +88,23 @@ class ActivationRecord:
 
         candidates_by_layer = []
         for layer_idx, (apoz_scores, avg_scores) in enumerate(zip(self.apoz_scores_by_layer, self.avg_scores_by_layer)):
-            apoz_scores = torch.Tensor(apoz_scores)
-            avg_scores = torch.Tensor(avg_scores)
-            avg_candidates = [idx for idx, score in enumerate(
-                avg_scores) if score >= avg_thresholds[layer_idx]]
-            candidates = [x[0] for x in apoz_scores.gt(
-                thresholds[layer_idx]).nonzero().tolist()]
-
+            if self.arch == "mobilenetv2":
+                apoz_scores = torch.Tensor(apoz_scores)
+                avg_scores = torch.Tensor(avg_scores)
+                avg_candidates = [idx for idx, score in enumerate(
+                    avg_scores) if score >= avg_thresholds[layer_idx]]
+                candidates = [(idx,float(score)) for idx, score in enumerate(apoz_scores) if score >= thresholds[layer_idx]]
+                candidates = sorted(candidates, key = lambda x: x[1])[:int(len(candidates)/2)]
+                candidates = [x[0] for x in candidates]
+            else:
+                apoz_scores = torch.Tensor(apoz_scores)
+                avg_scores = torch.Tensor(avg_scores)
+                avg_candidates = [idx for idx, score in enumerate(
+                    avg_scores) if score >= avg_thresholds[layer_idx]]
+                candidates = [x[0] for x in apoz_scores.gt(
+                    thresholds[layer_idx]).nonzero().tolist()]
             difference_candidates = list(
-                set(candidates).difference(set(avg_candidates)))
+                    set(candidates).difference(set(avg_candidates)))
             candidates_by_layer.append(difference_candidates)
         print(
             f"Total pruned candidates: {sum(len(l) for l in candidates_by_layer)}")
