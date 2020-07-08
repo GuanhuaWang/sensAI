@@ -10,6 +10,7 @@ from datasets import cifar
 import load_model
 from tqdm import tqdm
 import os
+from regularize_model import standard
 
 
 parser = argparse.ArgumentParser(
@@ -67,10 +68,14 @@ def main():
 
     model = load_model.load_pretrain_model(
         args.arch, 'cifar', args.resume, num_classes, use_cuda)
+
+    if args.arch in ["mobilenetv2", "shufflenetv2"]:
+        model = standard(model, args.arch, num_classes)
+  
     if use_cuda:
         model.cuda()
     print('\nMake a test run to generate activations. \n Using training set.\n')
-    with ActivationRecord(model) as recorder:
+    with ActivationRecord(model, args.arch) as recorder:
         # collect pruning data
         bar = tqdm(total=len(pruning_loader))
         for batch_idx, (inputs, _) in enumerate(pruning_loader):

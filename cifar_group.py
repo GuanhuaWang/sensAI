@@ -188,7 +188,6 @@ def main():
     else:
         print("==> Loading pruned model with some existing weights '{}'".format(args.arch))
         model = torch.load(args.resume, map_location=torch.device("cuda"))
-
     # Set training parameters
     start_epoch = args.start_epoch  # start from epoch 0 or last checkpoint epoch
     if not os.path.isdir(args.checkpoint):

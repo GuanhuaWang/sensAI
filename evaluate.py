@@ -27,7 +27,7 @@ import torch.multiprocessing as mp
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
-model_names += ["resnet110", "resnet164"]
+model_names += ["resnet110", "resnet164", "mobilenetv2", "shufflenetv2"]
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10/100/ImageNet Testing')
 # Checkpoints
