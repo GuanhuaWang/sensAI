@@ -14,16 +14,13 @@ from torch import nn
 import load_model
 import torch.multiprocessing as mp
 
-from regularize_model import standard
 from prune_utils.prune import prune_vgg16_conv_layer, prune_last_fc_layers, prune_resnet50
 from prune_utils.layer_prune import (
     prune_output_linear_layer_,
     prune_contiguous_conv2d_,
     prune_conv2d_out_channels_,
     prune_batchnorm2d_,
-    prune_linear_in_features_,
-    prune_mobile_block,
-    prune_shuffle_layer)
+    prune_linear_in_features_)
 from models.cifar.resnet import Bottleneck
 import torchvision.models as imagenet_models
 
@@ -112,31 +109,6 @@ def prune_resnet(model, candidates, group_indices):
             # increase the layer index
     prune_output_linear_layer_(model.fc, group_indices, use_bce=args.bce)
 
-def prune_mobilenetv2(model, candidates, group_indices):
-    layers = list(model.layers)
-    layer_index = 1
-    for block in layers:
-        conv1 = block.conv1
-        bn1 = block.bn1
-        conv2 = block.conv2
-        bn2 = block.bn2
-        conv3 = block.conv3
-        prune_1 = candidates[layer_index]
-        prune_2 = candidates[layer_index+1]
-        prune_mobile_block(conv1, conv2, conv3, prune_1, prune_2, bn1, bn2)
-        layer_index += 2
-    prune_output_linear_layer_(model.linear, group_indices, use_bce=args.bce)
-
-def prune_shufflenetv2(model, candidates, group_indices):
-    layer1, layer2, layer3 = model.layer1, model.layer2, model.layer3
-    layer1_candidates = candidates[1:15]
-    layer2_candidates = candidates[15:41]
-    layer3_candidates = candidates[41:55]
-    prune_shuffle_layer(layer1, layer1_candidates)
-    prune_shuffle_layer(layer2, layer2_candidates)
-    prune_shuffle_layer(layer3, layer3_candidates)
-    prune_output_linear_layer_(model.linear, group_indices, use_bce=args.bce)
-
 def filename_to_index(filename):
         filename = filename[6+len(args.prune_candidates):]
         return int(filename[:filename.index('_')])
@@ -153,10 +125,6 @@ def prune_cifar_worker(proc_ind, i, new_model, candidates, group_indices, arch, 
         prune_vgg(new_model, candidates, group_indices)
     elif args.arch.startswith('resnet'):
         prune_resnet(new_model, candidates, group_indices)
-    elif args.arch.startswith('mobile'):
-        prune_mobilenetv2(new_model, candidates, group_indices)
-    elif args.arch.startswith('shuffle'):
-        prune_shufflenetv2(new_model, candidates, group_indices)
     else:
         raise NotImplementedError
 
@@ -227,8 +195,6 @@ def main():
             model = load_model.load_pretrain_model(
                 args.arch, args.dataset, args.resume, num_classes, use_cuda)
             new_model = copy.deepcopy(model)
-            if args.arch in ["mobilenetv2", "shufflenetv2"]:
-                new_model = standard(new_model, args.arch, num_classes)
             p = mp.spawn(prune_cifar_worker, args=(i, new_model, candidates, group_indices, args.arch, model_save_directory), join=False)
             processes.append(p)
         for p in processes:

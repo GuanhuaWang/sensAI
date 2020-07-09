@@ -63,5 +63,3 @@ Densenet-161             22.35           6.20
 
 from .vgg import *
 from .resnet import *
-from .mobilenetv2 import *
-from .shufflenetv2 import *

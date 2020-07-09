@@ -12,7 +12,7 @@ pip install -r requirements.txt
 
 ## Experiment Instructions
 
-Supported neural network architectures for cifar10/cifar100: ARCH = {vgg19_bn, resnet110, resnet164, mobilenetv2, shufflenetv2}
+Supported neural network architectures for cifar10/cifar100: ARCH = {vgg19_bn, resnet110, resnet164}
 
 Supported neural network architectures for imagenet: ARCH = {vgg19_bn, resnet50}
 

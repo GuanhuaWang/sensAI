@@ -31,12 +31,7 @@ def load_pretrain_model(arch, dataset, resume_checkpoint, num_classes, use_cuda)
         model.cuda()
     state_dict = {}
     # deal with old torch version
-    if arch != 'mobilenetv2' and arch != 'shufflenetv2':
-        for k, v in checkpoint['state_dict'].items():
-            state_dict[k.replace('module.', '')] = v
-        model.load_state_dict(state_dict)
-    else:
-        for k, v in checkpoint['net'].items():
-            state_dict[k.replace('module.', '')] = v
-        model.load_state_dict(state_dict)
+    for k, v in checkpoint['state_dict'].items():
+        state_dict[k.replace('module.', '')] = v
+    model.load_state_dict(state_dict)
     return model
