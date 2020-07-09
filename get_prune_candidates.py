@@ -77,9 +77,9 @@ def main():
     print('\nMake a test run to generate activations. \n Using training set.\n')
     with ActivationRecord(model, args.arch) as recorder:
         # collect pruning data
-        bar = tqdm(total=len(pruning_loader))
+        #bar = tqdm(total=len(pruning_loader))
         for batch_idx, (inputs, _) in enumerate(pruning_loader):
-            bar.update(1)
+            #bar.update(1)
             if use_cuda:
                 inputs = inputs.cuda()
             recorder.record_batch(inputs)
