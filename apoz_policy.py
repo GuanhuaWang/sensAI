@@ -88,14 +88,7 @@ class ActivationRecord:
 
         candidates_by_layer = []
         for layer_idx, (apoz_scores, avg_scores) in enumerate(zip(self.apoz_scores_by_layer, self.avg_scores_by_layer)):
-            if self.arch != "mobilenetv2":
-                apoz_scores = torch.Tensor(apoz_scores)
-                avg_scores = torch.Tensor(avg_scores)
-                avg_candidates = [idx for idx, score in enumerate(
-                    avg_scores) if score >= avg_thresholds[layer_idx]]
-                candidates = [x[0] for x in apoz_scores.gt(
-                    thresholds[layer_idx]).nonzero().tolist()]
-            else:
+            if self.arch == "mobilenetv2":
                 apoz_scores = torch.Tensor(apoz_scores)
                 avg_scores = torch.Tensor(avg_scores)
                 avg_candidates = [idx for idx, score in enumerate(
@@ -103,6 +96,13 @@ class ActivationRecord:
                 candidates = [(idx,float(score)) for idx, score in enumerate(apoz_scores) if score >= thresholds[layer_idx]]
                 candidates = sorted(candidates, key = lambda x: x[1])[:int(len(candidates)/2)]
                 candidates = [x[0] for x in candidates]
+            else:
+                apoz_scores = torch.Tensor(apoz_scores)
+                avg_scores = torch.Tensor(avg_scores)
+                avg_candidates = [idx for idx, score in enumerate(
+                    avg_scores) if score >= avg_thresholds[layer_idx]]
+                candidates = [x[0] for x in apoz_scores.gt(
+                    thresholds[layer_idx]).nonzero().tolist()]
             difference_candidates = list(
                     set(candidates).difference(set(avg_candidates)))
             candidates_by_layer.append(difference_candidates)
