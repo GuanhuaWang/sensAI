@@ -106,6 +106,13 @@ class ActivationRecord:
             difference_candidates = list(
                     set(candidates).difference(set(avg_candidates)))
             candidates_by_layer.append(difference_candidates)
+            """
+            DEBUG: Printing out remaining neuron IDs
+            all_neuron = [idx for idx, score in enumerate(avg_scores)]
+            remaining = list(set(all_neuron)-set(difference_candidates))
+            print("\nThose remaining neuron index for layer ", layer_idx)
+            print(remaining)
+            """
         print(
             f"Total pruned candidates: {sum(len(l) for l in candidates_by_layer)}")
         return candidates_by_layer
