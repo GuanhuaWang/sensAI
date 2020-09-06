@@ -16,11 +16,13 @@ pip install -r requirements.txt
 
 ## Experiment Instructions
 
-Supported neural network architectures for CIFAR-10: ARCH = {vgg19_bn, resnet110, resnet164, mobilenetv2, shufflenetv2}
+Supported CNN architectures and datasets:
 
-Supported neural network architectures for CIFAR-100: ARCH = {vgg19_bn, resnet110, resnet164}
-
-Supported neural network architectures for ImageNet-1K: ARCH = {vgg19_bn, resnet50}
+| Dataset        | Architecture(`ARCH`) |
+| -------------  |:-------------:|
+| CIFAR-10       | vgg19_bn, resnet110, resnet164, mobilenetv2, shufflenetv2|
+| CIFAR-100      | vgg19_bn, resnet110, resnet164|
+| ImageNet-1K    | vgg19_bn, resnet50|
 
 
 1. Generate groups by running:
