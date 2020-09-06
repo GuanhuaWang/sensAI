@@ -25,7 +25,7 @@ Supported CNN architectures and datasets:
 | ImageNet-1K    | vgg19_bn, resnet50|
 
 
-1. Generate groups by running:
+### 1. Generate groups by running:
    
    For CIFAR-10/CIFAR-100:
    ```bash
@@ -38,7 +38,7 @@ Supported CNN architectures and datasets:
    
    Pruning candidate now stored in `./prune_candidate_logs`
    
-2. Prune models:
+### 2. Prune models:
     
    For CIFAR-10/CIFAR-100:
    ```bash
@@ -51,7 +51,7 @@ Supported CNN architectures and datasets:
    
    Pruned models are now saved in ./TO_SAVE_PRUNED_MODEL_DIR/$ARCH
    
-3. Retrain pruned models:
+### 3. Retrain pruned models:
   
    For CIFAR-10/CIFAR-100:
    ```bash
@@ -64,13 +64,13 @@ Supported CNN architectures and datasets:
    
    Retrained models now saved in ./TO_SAVE_PRUNED_MODEL_DIR_retrained/$ARCH/
    
-4. Evaluate
+### 4. Evaluate
 
-   For cifar10/cifar100:
+   For CIFAR-10/CIFAR-100:
    ```bash
    python3 evaluate.py -a $ARCH --dataset=$DATASET --retrained_dir ./{TO_SAVE_PRUNED_MODEL_DIR}_retrained --test-batch $batch_size
    ```
-   For imagenet:
+   For ImageNet-1K:
    ```bash
    python3 evaluate.py -d imagenet -a $ARCH --retrained_dir ./{TO_SAVE_PRUNED_MODEL_DIR}_retrained --data /{path_to_imagenet_dataset}
    ```
