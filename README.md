@@ -4,7 +4,7 @@
 
 # sensAI: ConvNets Decomposition via Class Parallelism for Fast Inference on Live Data
 
-## Pre-requirement
+## Environment
 
 Linux, python 3.6+
 
