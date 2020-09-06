@@ -25,7 +25,7 @@ Supported CNN architectures and datasets:
 | ImageNet-1K    | vgg19_bn, resnet50|
 
 
-### 1. Generate groups by running:
+### 1. Generate class groups:
    
    For CIFAR-10/CIFAR-100:
    ```bash
