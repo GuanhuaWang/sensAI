@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="sensAI-logo.png"  width="400" height="400">
+  <img src="sensAI-logo.png"  width="300" height="300">
 </p>
 
 # sensAI: ConvNets Decomposition via Class Parallelism for Fast Inference on Live Data
