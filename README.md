@@ -2,7 +2,7 @@
   <img src="sensAI-logo.png"  width="250" height="250">
 </p>
 
-# sensAI: ConvNets Decomposition via Class Parallelism for Fast Inference on Live Data
+# ConvNets Decomposition via Class Parallelism for Fast Inference on Live Data
 
 ## Pre-requirement
 
