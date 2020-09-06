@@ -75,3 +75,20 @@ Supported CNN architectures and datasets:
    python3 evaluate.py -d imagenet -a $ARCH --retrained_dir ./{TO_SAVE_PRUNED_MODEL_DIR}_retrained --data /{path_to_imagenet_dataset}
    ```
 
+## Contributors
+
+Thanks for all the contributors to this repository.
+
+* [Brandon Hsieh](https://github.com/hsiehbrandon) 
+
+* [Zhuang Liu](https://github.com/liuzhuang13)
+
+* [Kenan Jiang](https://github.com/Kenan-Jiang) 
+
+* [Kehan Wang](https://github.com/Jason-Khan)
+
+* [Siyuan Zhuang](https://github.com/suquark)
+
+* [Zihao Fan](https://github.com/zihao-fan)
+
+* [Hank O'Brien](https://github.com/hjobrien)
