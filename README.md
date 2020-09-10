@@ -72,7 +72,7 @@ Supported CNN architectures and datasets:
    ```
    For ImageNet-1K:
    ```bash
-   python3 evaluate.py -d imagenet -a $ARCH --retrained_dir ./{TO_SAVE_PRUNED_MODEL_DIR}_retrained --data /{path_to_imagenet_dataset}/
+   python3 evaluate.py -d imagenet -a $ARCH --retrained_dir ./{TO_SAVE_PRUNED_MODEL_DIR}_retrained/ --data /{path_to_imagenet_dataset}/
    ```
 
 ## Contributors
