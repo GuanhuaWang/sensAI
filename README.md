@@ -25,7 +25,7 @@ Supported CNN architectures and datasets:
 | ImageNet-1K    | vgg19_bn, resnet50|
 
 
-### 1. Generate class groups:
+### 1. Generate class groups
    
    For CIFAR-10/CIFAR-100:
    ```bash
@@ -33,25 +33,25 @@ Supported CNN architectures and datasets:
    ```
    For ImageNet-1K:
    ```bash
-   python3 group_selection.py --arch $ARCH --dataset imagenet --ngroups $number_of_groups --gpu_num $number_of_gpu --data /{path_to_imagenet_dataset}
+   python3 group_selection.py --arch $ARCH --dataset imagenet --ngroups $number_of_groups --gpu_num $number_of_gpu --data /{path_to_imagenet_dataset}/
    ```
    
    Pruning candidate now stored in `./prune_candidate_logs/`
    
-### 2. Prune models:
+### 2. Prune models
     
    For CIFAR-10/CIFAR-100:
    ```bash
-   python3 prune_and_get_model.py -a $ARCH --dataset $DATASET --resume $pretrained_model  -c ./prune_candidate_logs/ -s ./{TO_SAVE_PRUNED_MODEL_DIR}
+   python3 prune_and_get_model.py -a $ARCH --dataset $DATASET --resume $pretrained_model  -c ./prune_candidate_logs/ -s ./{TO_SAVE_PRUNED_MODEL_DIR}/
    ```
    For ImageNet-1K:
    ```bash
-   python3 prune_and_get_model.py -a $ARCH --dataset imagenet -c ./prune_candidate_logs/ -s ./{TO_SAVE_PRUNED_MODEL_DIR} --pretrained
+   python3 prune_and_get_model.py -a $ARCH --dataset imagenet -c ./prune_candidate_logs/ -s ./{TO_SAVE_PRUNED_MODEL_DIR}/ --pretrained
    ```
    
-   Pruned models are now saved in `./TO_SAVE_PRUNED_MODEL_DIR/$ARCH/`
+   Pruned models are now saved in `./{TO_SAVE_PRUNED_MODEL_DIR}/$ARCH/`
    
-### 3. Retrain pruned models:
+### 3. Retrain pruned models
   
    For CIFAR-10/CIFAR-100:
    ```bash
@@ -59,7 +59,7 @@ Supported CNN architectures and datasets:
    ```
    For ImageNet-1K:
    ```bash
-   python3 retrain_grouped_model.py -a $ARCH --dataset imagenet --resume ./{TO_SAVE_PRUNED_MODEL_DIR}/ --epochs $number_of_epochs --num_gpus $number_of_gpus --train_batch $batch_size --data /{path_to_imagenet_dataset}
+   python3 retrain_grouped_model.py -a $ARCH --dataset imagenet --resume ./{TO_SAVE_PRUNED_MODEL_DIR}/ --epochs $number_of_epochs --num_gpus $number_of_gpus --train_batch $batch_size --data /{path_to_imagenet_dataset}/
    ```
    
    Retrained models now saved in `./{TO_SAVE_PRUNED_MODEL_DIR}_retrained/$ARCH/`
@@ -68,11 +68,11 @@ Supported CNN architectures and datasets:
 
    For CIFAR-10/CIFAR-100:
    ```bash
-   python3 evaluate.py -a $ARCH --dataset=$DATASET --retrained_dir ./{TO_SAVE_PRUNED_MODEL_DIR}_retrained --test-batch $batch_size
+   python3 evaluate.py -a $ARCH --dataset=$DATASET --retrained_dir ./{TO_SAVE_PRUNED_MODEL_DIR}_retrained/ --test-batch $batch_size
    ```
    For ImageNet-1K:
    ```bash
-   python3 evaluate.py -d imagenet -a $ARCH --retrained_dir ./{TO_SAVE_PRUNED_MODEL_DIR}_retrained --data /{path_to_imagenet_dataset}
+   python3 evaluate.py -d imagenet -a $ARCH --retrained_dir ./{TO_SAVE_PRUNED_MODEL_DIR}_retrained --data /{path_to_imagenet_dataset}/
    ```
 
 ## Contributors
