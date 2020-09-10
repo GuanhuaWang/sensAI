@@ -36,7 +36,7 @@ Supported CNN architectures and datasets:
    python3 group_selection.py --arch $ARCH --dataset imagenet --ngroups $number_of_groups --gpu_num $number_of_gpu --data /{path_to_imagenet_dataset}
    ```
    
-   Pruning candidate now stored in `./prune_candidate_logs`
+   Pruning candidate now stored in `./prune_candidate_logs/`
    
 ### 2. Prune models:
     
@@ -49,7 +49,7 @@ Supported CNN architectures and datasets:
    python3 prune_and_get_model.py -a $ARCH --dataset imagenet -c ./prune_candidate_logs/ -s ./{TO_SAVE_PRUNED_MODEL_DIR} --pretrained
    ```
    
-   Pruned models are now saved in ./TO_SAVE_PRUNED_MODEL_DIR/$ARCH
+   Pruned models are now saved in `./TO_SAVE_PRUNED_MODEL_DIR/$ARCH/`
    
 ### 3. Retrain pruned models:
   
@@ -62,7 +62,7 @@ Supported CNN architectures and datasets:
    python3 retrain_grouped_model.py -a $ARCH --dataset imagenet --resume ./{TO_SAVE_PRUNED_MODEL_DIR}/ --epochs $number_of_epochs --num_gpus $number_of_gpus --train_batch $batch_size --data /{path_to_imagenet_dataset}
    ```
    
-   Retrained models now saved in ./TO_SAVE_PRUNED_MODEL_DIR_retrained/$ARCH/
+   Retrained models now saved in `./{TO_SAVE_PRUNED_MODEL_DIR}_retrained/$ARCH/`
    
 ### 4. Evaluate
 
