@@ -91,4 +91,19 @@ Thanks for all the contributors to this repository.
 
 * [Zihao Fan](https://github.com/zihao-fan)
 
-* [Hank O'Brien](https://github.com/hjobrien)
+* [Hank O'Brien](https://github.com/hjobrien) 
+
+
+
+<!---
+## Citation
+
+```text
+@inproceedings{wang2020sensAI,
+ author = {Guanhua Wang, Zhuang Liu, Brandon Hsieh, Siyuan Zhuang, Joseph Gonzalez, Trevor Darrell, Ion Stoica},
+ title = {{sensAI: ConvNets Decomposition via Class Parallelism for Fast Inference on Live Data}},
+ booktitle = {xxx conference},
+ year = {2020},
+} 
+```
+--->
