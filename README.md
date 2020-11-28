@@ -118,7 +118,7 @@ Supported CNN architectures and datasets:
 
 ## Contributors
 
-Thanks for all the main contributors to this repository.
+Thanks for all the main contributors to this repository:
 
 * [Brandon Hsieh](https://github.com/hsiehbrandon) 
 
