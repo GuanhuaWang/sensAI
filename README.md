@@ -130,7 +130,7 @@ Thanks for all the main contributors to this repository.
 
 * [Siyuan Zhuang](https://github.com/suquark)
 
-  and many others [Zihao Fan](https://github.com/zihao-fan), [Hank O'Brien](https://github.com/hjobrien) , [Yaoqing Yang](https://github.com/nsfzyzz), [Adarsh Karnati](https://github.com/akarnati11), [Jichan Chung](https://github.com/jichan3751), [Yingxin Kang](https://github.com/Miiira), [
+and many others [Zihao Fan](https://github.com/zihao-fan), [Hank O'Brien](https://github.com/hjobrien) , [Yaoqing Yang](https://github.com/nsfzyzz), [Adarsh Karnati](https://github.com/akarnati11), [Jichan Chung](https://github.com/jichan3751), [Yingxin Kang](https://github.com/Miiira), [
 Balaji Veeramani](https://github.com/bveeramani), [Sahil Rao](https://github.com/sahilrao21).
 
 
