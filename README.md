@@ -140,7 +140,7 @@ Balaji Veeramani](https://github.com/bveeramani), [Sahil Rao](https://github.com
 
 ```text
 @inproceedings{wang2021sensAI,
- author = {Guanhua Wang, Zhuang Liu, Brandon Hsieh, Siyuan Zhuang, Joseph Gonzalez, Trevor Darrell, Ion Stoica},
+ author = {Guanhua Wang and Zhuang Liu and Brandon Hsieh and Siyuan Zhuang and Joseph Gonzalez and Trevor Darrell and Ion Stoica},
  title = {{sensAI: ConvNets Decomposition via Class Parallelism for Fast Inference on Live Data}},
  booktitle = {Proceedings of Fourth Conference on Machine Learning and Systems (MLSys'21)},
  year = {2021}
